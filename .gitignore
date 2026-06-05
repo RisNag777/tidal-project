@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environment
+tidal_env/
+.venv/
+venv/
+env/
+
+# Secrets (Twilio / Sarvam keys are read from env vars)
+.env
+.env.*
+
+# Runtime data (written by app.py / broadbase.py)
+cache.json
+Cache.json
+station_registry.json
+temp_voice.ogg
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
