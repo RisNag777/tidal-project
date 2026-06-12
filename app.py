@@ -141,8 +141,9 @@ def process_coastal_safety(station):
         "temperature": 0.2
     }
     
-    ai_response = requests.post(url, headers=headers, json=payload).json()
-    final_advisory = ai_response['choices']['message']['content']
+    ai_response = requests.post(url, headers=headers, json=payload)
+    ai_response.raise_for_status()
+    final_advisory = ai_response.json()["choices"][0]["message"]["content"]
     
     cache[loc] = {"date": today_str, "advisory": final_advisory}
     save_json(CACHE_FILE, cache)
