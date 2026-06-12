@@ -136,7 +136,7 @@ def process_coastal_safety(station):
     """
     
     payload = {
-        "model": "sarvam-105b",
+        "model": "sarvam-24bit-indic",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.2
     }
