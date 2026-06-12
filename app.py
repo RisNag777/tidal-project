@@ -3,10 +3,12 @@ import json
 import requests
 import traceback
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from flask import Flask, request, Response
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.twiml.voice_response import VoiceResponse
 
+load_dotenv()
 app = Flask(__name__)
 
 # Core Credentials (Twilio $ billing, Sarvam AI INR billing)
