@@ -66,11 +66,12 @@ def transcribe_audio_via_sarvam(audio_url):
     with open(filename, "wb") as f: 
         f.write(response.content)
 
-    url = "https://sarvam.ai"
-    headers = {"API-Subscription-Key": SARVAM_API_KEY}
+    url = "https://api.sarvam.ai/speech-to-text"
+    headers = {"api-subscription-key": SARVAM_API_KEY}
     files = {"file": (filename, open(filename, "rb"), "audio/ogg")}
+    data = {"model": "saaras:v3", "mode": "translate"}
     
-    api_resp = requests.post(url, headers=headers, files=files)
+    api_resp = requests.post(url, headers=headers, files=files, data=data)
     os.remove(filename)
     
     if api_resp.status_code == 200:
@@ -98,7 +99,7 @@ def process_coastal_safety(station):
         print("💰 Cost Avoided! Returning pre-computed safety advisory from cache.")
         return cache[loc]["advisory"]
 
-    base_url = "https://open-meteo.com"
+    base_url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": float(station['latitude']),
         "longitude": float(station['longitude']),
@@ -124,8 +125,8 @@ def process_coastal_safety(station):
     high_tide_eta_mins = highest_idx * 60
     low_tide_eta_mins = lowest_idx * 60
     
-    url = "https://sarvam.ai"
-    headers = {"Content-Type": "application/json", "API-Subscription-Key": SARVAM_API_KEY}
+    url = "https://api.sarvam.ai/v1/chat/completions"
+    headers = {"Content-Type": "application/json", "api-subscription-key": SARVAM_API_KEY}
     
     prompt = f"""
     Location: {loc}. 
@@ -135,7 +136,7 @@ def process_coastal_safety(station):
     """
     
     payload = {
-        "model": "sarvam-24bit-indic",
+        "model": "sarvam-105b",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.2
     }
