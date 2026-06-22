@@ -2,7 +2,8 @@ import os
 import json
 import requests
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from flask import Flask, request, Response
 from twilio.twiml.messaging_response import MessagingResponse
@@ -32,7 +33,7 @@ def save_json(filepath, data):
 # --- REGISTRY LOGGING ENGINE (Requirement 5) ---
 def update_station_registry(queried_location, target_station):
     registry = load_json(REGISTRY_FILE)
-    today_str = datetime.utcnow().strftime('%Y-%m-%d')
+    today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     
     current_entry = {
         "station_name": target_station["location_name"],
@@ -92,7 +93,7 @@ def match_station_locally(user_text):
 # --- TELEMETRY ENGINE & TIME FORECASTING (Requirement 6) ---
 def process_coastal_safety(station):
     cache = load_json(CACHE_FILE)
-    today_str = datetime.utcnow().strftime('%Y-%m-%d')
+    today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     loc = station["location_name"]
 
     if loc in cache and cache[loc].get("date") == today_str:
@@ -112,7 +113,7 @@ def process_coastal_safety(station):
     times = api_response['hourly']['time']
     pressures = api_response['hourly']['surface_pressure']
     
-    now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
     current_hour_str = now_ist.strftime("%Y-%m-%dT%H:00")
     
     try: idx = times.index(current_hour_str)
