@@ -30,6 +30,55 @@ def load_json(filepath):
 def save_json(filepath, data):
     with open(filepath, 'w') as f: json.dump(data, f, indent=2)
 
+def format_ist_time(now_ist):
+    time_str = now_ist.strftime("%I:%M %p")
+    if time_str.startswith("0"):
+        time_str = time_str[1:]
+    return time_str
+
+def describe_trend(values, threshold):
+    if len(values) < 2:
+        return "steady"
+    delta = values[-1] - values[0]
+    if delta > threshold:
+        return "increasing"
+    if delta < -threshold:
+        return "decreasing"
+    return "steady"
+
+def build_safety_prompt(station, telemetry):
+    loc = station["location_name"]
+    return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
+
+🌊 Safety Status Update: {loc}
+
+Urgent Safety Advisory
+
+Location: {loc}
+Current Time: {telemetry['current_time']}
+
+⚠️ {{DANGER_TYPE_IN_CAPS}}
+
+{{2-3 sentences describing current conditions. Use these telemetry facts:
+- Pressure trend: {telemetry['pressure_trend']} (current {telemetry['current_pressure']:.1f} hPa)
+- Wind trend: {telemetry['wind_trend']} (current {telemetry['current_wind']:.1f} km/h)
+- High water peak in {telemetry['high_tide_eta_mins']} minutes
+- Low water drop in {telemetry['low_tide_eta_mins']} minutes
+Mention tide timing and whether it is safe or unsafe for small boats.}}
+
+For small non-motorized fishing boats:
+- {{action bullet 1}}
+- {{action bullet 2}}
+- {{action bullet 3}}
+
+Stay safe.
+
+Rules:
+- Replace {{placeholders}} with real content; do not leave braces in the output.
+- Choose a danger type such as ESTUARY/BACKWATER DANGER, HARBOR DANGER, or OPEN COAST DANGER based on the location and conditions.
+- Keep the header lines exactly as shown, including the location name and current time.
+- Use plain text only."""
+
 # --- REGISTRY LOGGING ENGINE (Requirement 5) ---
 def update_station_registry(queried_location, target_station):
     registry = load_json(REGISTRY_FILE)
@@ -114,6 +163,7 @@ def process_coastal_safety(station):
     
     times = api_response['hourly']['time']
     pressures = api_response['hourly']['surface_pressure']
+    wind_speeds = api_response['hourly']['wind_speed_10m']
     
     now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
     current_hour_str = now_ist.strftime("%Y-%m-%dT%H:00")
@@ -122,27 +172,32 @@ def process_coastal_safety(station):
     except ValueError: idx = 0
 
     target_pressures = pressures[idx:idx+12]
+    target_winds = wind_speeds[idx:idx+12]
     highest_idx = target_pressures.index(max(target_pressures))
     lowest_idx = target_pressures.index(min(target_pressures))
     
     high_tide_eta_mins = highest_idx * 60
     low_tide_eta_mins = lowest_idx * 60
     
+    telemetry = {
+        "current_time": format_ist_time(now_ist),
+        "current_pressure": target_pressures[0],
+        "current_wind": target_winds[0],
+        "pressure_trend": describe_trend(target_pressures, 0.5),
+        "wind_trend": describe_trend(target_winds, 2.0),
+        "high_tide_eta_mins": high_tide_eta_mins,
+        "low_tide_eta_mins": low_tide_eta_mins,
+    }
+    
     url = "https://api.sarvam.ai/v1/chat/completions"
     headers = {"Content-Type": "application/json", "api-subscription-key": SARVAM_API_KEY}
-    
-    prompt = f"""
-    Location: {loc}. 
-    High water parameter spike occurs in exactly {high_tide_eta_mins} minutes.
-    Low water channel drop occurs in exactly {low_tide_eta_mins} minutes.
-    Write a brief marine safety advisory for small boats and foragers. Specify exactly how many hours or minutes remain before high tides start or end. Keep it to 2 sentences without markdown.
-    """
+    prompt = build_safety_prompt(station, telemetry)
     
     payload = {
         "model": "sarvam-105b",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.2,
-        "max_tokens": 256,
+        "max_tokens": 512,
         "reasoning_effort": None,
     }
     
@@ -180,7 +235,7 @@ def incoming_message_handler():
             
         update_station_registry(user_query, station)
         advisory = process_coastal_safety(station)
-        twiml_resp.message(f"🌊 *Update for {station['location_name']}*:\n\n{advisory}")
+        twiml_resp.message(advisory)
         
     except Exception:
         traceback.print_exc()
