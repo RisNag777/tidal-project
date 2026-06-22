@@ -97,8 +97,10 @@ def process_coastal_safety(station):
     loc = station["location_name"]
 
     if loc in cache and cache[loc].get("date") == today_str:
-        print("💰 Cost Avoided! Returning pre-computed safety advisory from cache.")
-        return cache[loc]["advisory"]
+        cached_advisory = cache[loc].get("advisory")
+        if cached_advisory:
+            print("💰 Cost Avoided! Returning pre-computed safety advisory from cache.")
+            return cached_advisory
 
     base_url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -139,7 +141,9 @@ def process_coastal_safety(station):
     payload = {
         "model": "sarvam-105b",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.2
+        "temperature": 0.2,
+        "max_tokens": 256,
+        "reasoning_effort": None,
     }
     
     ai_response = requests.post(url, headers=headers, json=payload)
