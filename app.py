@@ -46,6 +46,59 @@ def describe_trend(values, threshold):
         return "decreasing"
     return "steady"
 
+def format_eta(minutes):
+    if minutes == 0:
+        return "now"
+    if minutes < 60:
+        return f"in about {minutes} minutes"
+    hours, rem = divmod(minutes, 60)
+    hour_label = "hour" if hours == 1 else "hours"
+    if rem == 0:
+        return f"in about {hours} {hour_label}"
+    return f"in about {hours} {hour_label} {rem} minutes"
+
+def compute_tide_timing(pressures, start_idx, window_hours=12):
+    window = pressures[start_idx:start_idx + window_hours]
+    if len(window) < 3:
+        return {
+            "tide_summary": (
+                "Tide timing is uncertain due to limited forecast data. "
+                "Use local shoreline markers and harbor signals."
+            ),
+            "high_tide_eta_mins": None,
+            "low_tide_eta_mins": None,
+        }
+
+    highest_idx = window.index(max(window))
+    lowest_idx = window.index(min(window))
+    high_mins = highest_idx * 60
+    low_mins = lowest_idx * 60
+
+    if highest_idx == lowest_idx:
+        return {
+            "tide_summary": (
+                "No clear high or low water signal in the next 12 hours. "
+                "Pressure appears steady; rely on local tide knowledge."
+            ),
+            "high_tide_eta_mins": high_mins,
+            "low_tide_eta_mins": low_mins,
+        }
+
+    if highest_idx == 0:
+        tide_summary = f"High water conditions are likely now. Low water expected {format_eta(low_mins)}."
+    elif lowest_idx == 0:
+        tide_summary = f"Low water conditions are likely now. High water expected {format_eta(high_mins)}."
+    elif high_mins < low_mins:
+        tide_summary = f"High water expected {format_eta(high_mins)}, then low water expected {format_eta(low_mins)}."
+    else:
+        tide_summary = f"Low water expected {format_eta(low_mins)}, then high water expected {format_eta(high_mins)}."
+
+    return {
+        "tide_summary": tide_summary,
+        "high_tide_eta_mins": high_mins,
+        "low_tide_eta_mins": low_mins,
+    }
+
 def build_safety_prompt(station, telemetry):
     loc = station["location_name"]
     return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
@@ -62,9 +115,8 @@ Current Time: {telemetry['current_time']}
 {{2-3 sentences describing current conditions. Use these telemetry facts:
 - Pressure trend: {telemetry['pressure_trend']} (current {telemetry['current_pressure']:.1f} hPa)
 - Wind trend: {telemetry['wind_trend']} (current {telemetry['current_wind']:.1f} km/h)
-- High water peak in {telemetry['high_tide_eta_mins']} minutes
-- Low water drop in {telemetry['low_tide_eta_mins']} minutes
-Mention tide timing and whether it is safe or unsafe for small boats.}}
+- Tide estimate (pressure-based, approximate): {telemetry['tide_summary']}
+State whether conditions are safe or risky for small boats. Do not contradict the tide estimate above.}}
 
 For small non-motorized fishing boats:
 - {{action bullet 1}}
@@ -75,6 +127,8 @@ Stay safe.
 
 Rules:
 - Replace {{placeholders}} with real content; do not leave braces in the output.
+- Use the tide estimate sentence exactly as written; never report high and low water at the same time.
+- Choose danger level from conditions: CAUTION for steady/moderate wind, DANGER only for strong wind or clearly unsafe tide timing.
 - Choose a danger type such as ESTUARY/BACKWATER DANGER, HARBOR DANGER, or OPEN COAST DANGER based on the location and conditions.
 - Keep the header lines exactly as shown, including the location name and current time.
 - Use plain text only."""
@@ -157,7 +211,7 @@ def process_coastal_safety(station):
         "longitude": float(station['longitude']),
         "hourly": "surface_pressure,wind_speed_10m",
         "timezone": "Asia/Kolkata",
-        "forecast_days": 1
+        "forecast_days": 2
     }
     api_response = requests.get(base_url, params=params).json()
     
@@ -173,11 +227,7 @@ def process_coastal_safety(station):
 
     target_pressures = pressures[idx:idx+12]
     target_winds = wind_speeds[idx:idx+12]
-    highest_idx = target_pressures.index(max(target_pressures))
-    lowest_idx = target_pressures.index(min(target_pressures))
-    
-    high_tide_eta_mins = highest_idx * 60
-    low_tide_eta_mins = lowest_idx * 60
+    tide_timing = compute_tide_timing(pressures, idx)
     
     telemetry = {
         "current_time": format_ist_time(now_ist),
@@ -185,8 +235,9 @@ def process_coastal_safety(station):
         "current_wind": target_winds[0],
         "pressure_trend": describe_trend(target_pressures, 0.5),
         "wind_trend": describe_trend(target_winds, 2.0),
-        "high_tide_eta_mins": high_tide_eta_mins,
-        "low_tide_eta_mins": low_tide_eta_mins,
+        "tide_summary": tide_timing["tide_summary"],
+        "high_tide_eta_mins": tide_timing["high_tide_eta_mins"],
+        "low_tide_eta_mins": tide_timing["low_tide_eta_mins"],
     }
     
     url = "https://api.sarvam.ai/v1/chat/completions"
