@@ -1,0 +1,15 @@
+[Unit]
+Description=Karnataka Coastal Safety Flask App
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/tidal-project
+EnvironmentFile=/root/tidal-project/.env
+ExecStart=/root/tidal-project/tidal_env/bin/python3 /root/tidal-project/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
