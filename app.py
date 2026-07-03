@@ -36,6 +36,36 @@ def format_ist_time(now_ist):
         time_str = time_str[1:]
     return time_str
 
+# Karnataka coastal monsoon safety window (district-style seasonal ban period)
+MONSOON_START = (5, 16)   # May 16
+MONSOON_END = (9, 25)     # September 25
+
+def in_monsoon_season(now_ist):
+    month_day = (now_ist.month, now_ist.day)
+    return MONSOON_START <= month_day <= MONSOON_END
+
+def monsoon_overlay_block(now_ist):
+    if not in_monsoon_season(now_ist):
+        return ""
+    return (
+        "⛔ MONSOON SEASON ALERT (May 16 – Sep 25)\n"
+        "Arabian Sea conditions are often dangerous. Treat all water access as high risk.\n"
+        "Follow local district orders and red-flag warnings."
+    )
+
+def apply_monsoon_overlay(advisory, now_ist):
+    """Insert the monsoon banner after the advisory header when in season."""
+    block = monsoon_overlay_block(now_ist)
+    if not block or "MONSOON SEASON ALERT" in advisory:
+        return advisory
+
+    lines = advisory.split("\n", 1)
+    header = lines[0]
+    rest = lines[1].lstrip("\n") if len(lines) > 1 else ""
+    if rest:
+        return f"{header}\n\n{block}\n\n{rest}"
+    return f"{header}\n\n{block}"
+
 def describe_trend(values, threshold):
     if len(values) < 2:
         return "steady"
@@ -99,12 +129,19 @@ def compute_tide_timing(pressures, start_idx, window_hours=12):
         "low_tide_eta_mins": low_mins,
     }
 
-def build_safety_prompt(station, telemetry):
+def build_safety_prompt(station, telemetry, now_ist):
     loc = station["location_name"]
+    monsoon_block = monsoon_overlay_block(now_ist)
+    monsoon_section = f"\n{monsoon_block}\n" if monsoon_block else "\n"
+    monsoon_rule = (
+        "- Include the monsoon alert lines exactly as shown; do not invent legal bans or fines.\n"
+        if monsoon_block else
+        "- Do not invent a monsoon ban if no monsoon alert lines are shown.\n"
+    )
     return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
 
 🌊 Safety Status Update: {loc}
-
+{monsoon_section}
 Urgent Safety Advisory
 
 Location: {loc}
@@ -128,7 +165,7 @@ Stay safe.
 Rules:
 - Replace {{placeholders}} with real content; do not leave braces in the output.
 - Use the tide estimate sentence exactly as written; never report high and low water at the same time.
-- Choose danger level from conditions: CAUTION for steady/moderate wind, DANGER only for strong wind or clearly unsafe tide timing.
+{monsoon_rule}- Choose danger level from conditions: CAUTION for steady/moderate wind, DANGER only for strong wind or clearly unsafe tide timing. During monsoon season, prefer elevated caution.
 - Choose a danger type such as ESTUARY/BACKWATER DANGER, HARBOR DANGER, or OPEN COAST DANGER based on the location and conditions.
 - Keep the header lines exactly as shown, including the location name and current time.
 - Use plain text only."""
@@ -203,7 +240,8 @@ def process_coastal_safety(station):
         cached_advisory = cache[loc].get("advisory")
         if cached_advisory:
             print("💰 Cost Avoided! Returning pre-computed safety advisory from cache.")
-            return cached_advisory
+            now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+            return apply_monsoon_overlay(cached_advisory, now_ist)
 
     base_url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -242,7 +280,7 @@ def process_coastal_safety(station):
     
     url = "https://api.sarvam.ai/v1/chat/completions"
     headers = {"Content-Type": "application/json", "api-subscription-key": SARVAM_API_KEY}
-    prompt = build_safety_prompt(station, telemetry)
+    prompt = build_safety_prompt(station, telemetry, now_ist)
     
     payload = {
         "model": "sarvam-105b",
@@ -255,6 +293,7 @@ def process_coastal_safety(station):
     ai_response = requests.post(url, headers=headers, json=payload)
     ai_response.raise_for_status()
     final_advisory = ai_response.json()["choices"][0]["message"]["content"]
+    final_advisory = apply_monsoon_overlay(final_advisory, now_ist)
     
     cache[loc] = {"date": today_str, "advisory": final_advisory}
     save_json(CACHE_FILE, cache)
