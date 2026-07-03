@@ -66,6 +66,127 @@ def apply_monsoon_overlay(advisory, now_ist):
         return f"{header}\n\n{block}\n\n{rest}"
     return f"{header}\n\n{block}"
 
+# Audience-specific actions keyed by station site_type
+ACTION_TEMPLATES = {
+    "harbor": {
+        "recreational": [
+            "Stay behind shoreline barricades and red-flag markers.",
+            "Do not enter the water for swimming, wading, or photos.",
+            "Keep children on upper dry walkways away from breaking waves.",
+        ],
+        "operators": [
+            "Suspend recreational water sports and beach boat launches.",
+            "Keep jet skis, banana boats, and rental craft grounded.",
+            "Do not bring equipment near the shore during peak high tide.",
+        ],
+        "fishermen": [
+            "Remain docked inside the protected harbor.",
+            "Do not launch from shore during peak high tide.",
+            "Avoid the river mouth and breakwater until water eases.",
+        ],
+    },
+    "backwater": {
+        "recreational": [
+            "Avoid sandbars and channel edges during rising water.",
+            "Stay off mud flats that can flood quickly on incoming tide.",
+            "Follow local patrol instructions and red-flag warnings.",
+        ],
+        "operators": [
+            "Suspend ferry or joyride operations in narrow channels.",
+            "Ground all rental craft until water levels ease.",
+            "Keep passengers away from estuary entry points.",
+        ],
+        "fishermen": [
+            "Do not cross the backwater mouth during peak high tide.",
+            "Keep small boats tied inside sheltered channels.",
+            "Watch for strong currents where the backwater meets the sea.",
+        ],
+    },
+    "estuary": {
+        "recreational": [
+            "Stay away from estuary banks during high water.",
+            "Do not wade into channels or sand spits.",
+            "Use designated walkways only.",
+        ],
+        "operators": [
+            "Suspend small craft tours through the estuary.",
+            "Keep all passenger boats away from the river mouth.",
+            "Monitor district advisories before resuming service.",
+        ],
+        "fishermen": [
+            "Do not attempt to cross the estuary mouth at peak tide.",
+            "Secure nets and canoes in sheltered inland channels.",
+            "Watch for rip currents where river flow meets the sea.",
+        ],
+    },
+    "port": {
+        "recreational": [
+            "Stay off port breakwaters and restricted quay areas.",
+            "Do not swim near shipping channels or dock walls.",
+            "Observe port security and safety signage.",
+        ],
+        "operators": [
+            "Delay non-essential port transits for small passenger craft.",
+            "Keep commercial launches inside protected basins.",
+            "Follow harbor master instructions.",
+        ],
+        "fishermen": [
+            "Remain alongside port docks until tide and wind ease.",
+            "Do not leave protected harbor waters in small craft.",
+            "Secure gear before peak high water.",
+        ],
+    },
+}
+
+AUDIENCE_HEADERS = (
+    ("recreational", "🏊 Families, kids & swimmers:"),
+    ("operators", "🏄 Water sports operators:"),
+    ("fishermen", "🎣 Small boats & fishermen:"),
+)
+
+SITE_DANGER_LABELS = {
+    "harbor": "HARBOR / RIVER-MOUTH CAUTION",
+    "backwater": "BACKWATER DANGER",
+    "estuary": "ESTUARY DANGER",
+    "port": "PORT CAUTION",
+}
+
+def station_site_type(station):
+    return station.get("site_type", "harbor")
+
+def actions_for(station, audience):
+    site_type = station_site_type(station)
+    templates = ACTION_TEMPLATES.get(site_type, ACTION_TEMPLATES["harbor"])
+    return templates[audience]
+
+def build_action_sections(station):
+    lines = []
+    for audience, header in AUDIENCE_HEADERS:
+        lines.append(header)
+        for bullet in actions_for(station, audience):
+            lines.append(f"- {bullet}")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+def apply_action_templates(advisory, station):
+    """Replace free-form action bullets with site-type templates."""
+    sections = build_action_sections(station)
+    markers = [header for _, header in AUDIENCE_HEADERS] + [
+        "For small non-motorized fishing boats:",
+    ]
+    cut_at = None
+    for marker in markers:
+        idx = advisory.find(marker)
+        if idx != -1 and (cut_at is None or idx < cut_at):
+            cut_at = idx
+
+    stay_idx = advisory.rfind("Stay safe.")
+    if cut_at is not None and stay_idx != -1 and cut_at < stay_idx:
+        return advisory[:cut_at].rstrip() + "\n\n" + sections + "\n\nStay safe."
+    if stay_idx != -1:
+        return advisory[:stay_idx].rstrip() + "\n\n" + sections + "\n\nStay safe."
+    return advisory.rstrip() + "\n\n" + sections + "\n\nStay safe."
+
 def describe_trend(values, threshold):
     if len(values) < 2:
         return "steady"
@@ -138,6 +259,8 @@ def build_safety_prompt(station, telemetry, now_ist):
         if monsoon_block else
         "- Do not invent a monsoon ban if no monsoon alert lines are shown.\n"
     )
+    danger_label = SITE_DANGER_LABELS.get(station_site_type(station), "COASTAL CAUTION")
+    action_sections = build_action_sections(station)
     return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
 
 🌊 Safety Status Update: {loc}
@@ -147,7 +270,7 @@ Urgent Safety Advisory
 Location: {loc}
 Current Time: {telemetry['current_time']}
 
-⚠️ {{DANGER_TYPE_IN_CAPS}}
+⚠️ {danger_label}
 
 {{2-3 sentences describing current conditions. Use these telemetry facts:
 - Pressure trend: {telemetry['pressure_trend']} (current {telemetry['current_pressure']:.1f} hPa)
@@ -155,19 +278,16 @@ Current Time: {telemetry['current_time']}
 - Tide estimate (pressure-based, approximate): {telemetry['tide_summary']}
 State whether conditions are safe or risky for small boats. Do not contradict the tide estimate above.}}
 
-For small non-motorized fishing boats:
-- {{action bullet 1}}
-- {{action bullet 2}}
-- {{action bullet 3}}
+{action_sections}
 
 Stay safe.
 
 Rules:
 - Replace {{placeholders}} with real content; do not leave braces in the output.
 - Use the tide estimate sentence exactly as written; never report high and low water at the same time.
-{monsoon_rule}- Choose danger level from conditions: CAUTION for steady/moderate wind, DANGER only for strong wind or clearly unsafe tide timing. During monsoon season, prefer elevated caution.
-- Choose a danger type such as ESTUARY/BACKWATER DANGER, HARBOR DANGER, or OPEN COAST DANGER based on the location and conditions.
-- Keep the header lines exactly as shown, including the location name and current time.
+- Copy the audience action sections exactly as shown; do not invent, remove, or rewrite bullets.
+{monsoon_rule}- Prefer elevated caution during monsoon season or strong wind.
+- Keep the header lines exactly as shown, including the location name, current time, and danger label.
 - Use plain text only."""
 
 # --- REGISTRY LOGGING ENGINE (Requirement 5) ---
@@ -241,7 +361,8 @@ def process_coastal_safety(station):
         if cached_advisory:
             print("💰 Cost Avoided! Returning pre-computed safety advisory from cache.")
             now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
-            return apply_monsoon_overlay(cached_advisory, now_ist)
+            advisory = apply_monsoon_overlay(cached_advisory, now_ist)
+            return apply_action_templates(advisory, station)
 
     base_url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -294,6 +415,7 @@ def process_coastal_safety(station):
     ai_response.raise_for_status()
     final_advisory = ai_response.json()["choices"][0]["message"]["content"]
     final_advisory = apply_monsoon_overlay(final_advisory, now_ist)
+    final_advisory = apply_action_templates(final_advisory, station)
     
     cache[loc] = {"date": today_str, "advisory": final_advisory}
     save_json(CACHE_FILE, cache)
@@ -340,7 +462,12 @@ def voice_ivr_handler():
     twiml_voice = VoiceResponse()
     
     # Auto-default to main hub to handle incoming voice calls immediately
-    default_station = {"location_name": "Malpe Fishing Harbor", "latitude": 13.3486, "longitude": 74.6961}
+    default_station = {
+        "location_name": "Malpe Fishing Harbor",
+        "latitude": 13.3486,
+        "longitude": 74.6961,
+        "site_type": "harbor",
+    }
     update_station_registry("Voice Phone Call Inbound Connection", default_station)
     
     advisory_script = process_coastal_safety(default_station)
