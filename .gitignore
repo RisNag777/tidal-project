@@ -21,6 +21,7 @@ env/
 cache.json
 Cache.json
 station_registry.json
+user_sessions.json
 temp_voice.ogg
 
 # OS / editor noise
