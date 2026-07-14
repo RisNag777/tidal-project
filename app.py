@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, Response
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.twiml.voice_response import VoiceResponse
+from tides import build_tide_table, fetch_tide_context
 
 load_dotenv()
 app = Flask(__name__)
@@ -244,58 +245,25 @@ def describe_trend(values, threshold):
         return "decreasing"
     return "steady"
 
-def format_eta(minutes):
-    if minutes == 0:
-        return "now"
-    if minutes < 60:
-        return f"in about {minutes} minutes"
-    hours, rem = divmod(minutes, 60)
-    hour_label = "hour" if hours == 1 else "hours"
-    if rem == 0:
-        return f"in about {hours} {hour_label}"
-    return f"in about {hours} {hour_label} {rem} minutes"
+def append_tide_table(advisory, tide_context, detail_level):
+    if detail_level != "full" or tide_context.get("source") != "survey_of_india":
+        return advisory
 
-def compute_tide_timing(pressures, start_idx, window_hours=12):
-    window = pressures[start_idx:start_idx + window_hours]
-    if len(window) < 3:
-        return {
-            "tide_summary": (
-                "Tide timing is uncertain due to limited forecast data. "
-                "Use local shoreline markers and harbor signals."
-            ),
-            "high_tide_eta_mins": None,
-            "low_tide_eta_mins": None,
-        }
+    table = build_tide_table(tide_context)
+    markers = [header for _, header in AUDIENCE_HEADERS] + [
+        "For small non-motorized fishing boats:",
+        "🎣 Small boats & fishermen:",
+        "Reply DETAILS for full advisory.",
+    ]
+    cut_at = None
+    for marker in markers:
+        idx = advisory.find(marker)
+        if idx != -1 and (cut_at is None or idx < cut_at):
+            cut_at = idx
 
-    highest_idx = window.index(max(window))
-    lowest_idx = window.index(min(window))
-    high_mins = highest_idx * 60
-    low_mins = lowest_idx * 60
-
-    if highest_idx == lowest_idx:
-        return {
-            "tide_summary": (
-                "No clear high or low water signal in the next 12 hours. "
-                "Pressure appears steady; rely on local tide knowledge."
-            ),
-            "high_tide_eta_mins": high_mins,
-            "low_tide_eta_mins": low_mins,
-        }
-
-    if highest_idx == 0:
-        tide_summary = f"High water conditions are likely now. Low water expected {format_eta(low_mins)}."
-    elif lowest_idx == 0:
-        tide_summary = f"Low water conditions are likely now. High water expected {format_eta(high_mins)}."
-    elif high_mins < low_mins:
-        tide_summary = f"High water expected {format_eta(high_mins)}, then low water expected {format_eta(low_mins)}."
-    else:
-        tide_summary = f"Low water expected {format_eta(low_mins)}, then high water expected {format_eta(high_mins)}."
-
-    return {
-        "tide_summary": tide_summary,
-        "high_tide_eta_mins": high_mins,
-        "low_tide_eta_mins": low_mins,
-    }
+    if cut_at is not None:
+        return advisory[:cut_at].rstrip() + "\n\n" + table + "\n\n" + advisory[cut_at:].lstrip()
+    return advisory.rstrip() + "\n\n" + table
 
 def build_safety_prompt(station, telemetry, now_ist):
     loc = station["location_name"]
@@ -323,8 +291,8 @@ Current Time: {telemetry['current_time']}
 {{2-3 sentences describing current conditions. Use these telemetry facts:
 - Pressure trend: {telemetry['pressure_trend']} (current {telemetry['current_pressure']:.1f} hPa)
 - Wind trend: {telemetry['wind_trend']} (current {telemetry['current_wind']:.1f} km/h)
-- Tide estimate (pressure-based, approximate): {telemetry['tide_summary']}
-State whether conditions are safe or risky for small boats. Do not contradict the tide estimate above.}}
+- Official tide times (Survey of India): {telemetry['tide_summary']}
+State whether conditions are safe or risky for small boats. Use the tide times exactly as written; do not invent clock times.}}
 
 {action_sections}
 
@@ -332,7 +300,8 @@ Stay safe.
 
 Rules:
 - Replace {{placeholders}} with real content; do not leave braces in the output.
-- Use the tide estimate sentence exactly as written; never report high and low water at the same time.
+- Use the Survey of India tide sentence exactly as written; never report high and low water at the same time.
+- Do not describe tides as "pressure-based" when official SOI times are provided.
 - Copy the audience action sections exactly as shown; do not invent, remove, or rewrite bullets.
 {monsoon_rule}- Prefer elevated caution during monsoon season or strong wind.
 - Keep the header lines exactly as shown, including the location name, current time, and danger label.
@@ -411,7 +380,11 @@ def process_coastal_safety(station, detail_level="short"):
         if cached_advisory:
             print("💰 Cost Avoided! Returning pre-computed safety advisory from cache.")
             advisory = apply_monsoon_overlay(cached_advisory, now_ist)
-            return apply_action_templates(advisory, station, detail_level=detail_level)
+            result = apply_action_templates(advisory, station, detail_level=detail_level)
+            if detail_level == "full":
+                tide_context = fetch_tide_context(station, now_ist)
+                result = append_tide_table(result, tide_context, detail_level="full")
+            return result
 
     base_url = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -434,17 +407,16 @@ def process_coastal_safety(station, detail_level="short"):
 
     target_pressures = pressures[idx:idx+12]
     target_winds = wind_speeds[idx:idx+12]
-    tide_timing = compute_tide_timing(pressures, idx)
-    
+    tide_context = fetch_tide_context(station, now_ist, pressures, idx)
+
     telemetry = {
         "current_time": format_ist_time(now_ist),
         "current_pressure": target_pressures[0],
         "current_wind": target_winds[0],
         "pressure_trend": describe_trend(target_pressures, 0.5),
         "wind_trend": describe_trend(target_winds, 2.0),
-        "tide_summary": tide_timing["tide_summary"],
-        "high_tide_eta_mins": tide_timing["high_tide_eta_mins"],
-        "low_tide_eta_mins": tide_timing["low_tide_eta_mins"],
+        "tide_summary": tide_context["tide_summary"],
+        "tide_source": tide_context.get("source", "unavailable"),
     }
     
     url = "https://api.sarvam.ai/v1/chat/completions"
@@ -466,6 +438,7 @@ def process_coastal_safety(station, detail_level="short"):
 
     short_advisory = apply_action_templates(base_advisory, station, detail_level="short")
     full_advisory = apply_action_templates(base_advisory, station, detail_level="full")
+    full_advisory = append_tide_table(full_advisory, tide_context, detail_level="full")
     
     cache[loc] = {
         "date": today_str,
