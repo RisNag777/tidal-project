@@ -245,10 +245,36 @@ def describe_trend(values, threshold):
         return "decreasing"
     return "steady"
 
+TIDE_TABLE_MARKER = "Today's tide times (Survey of India):"
+
+def strip_tide_table(advisory):
+    """Remove any previously inserted SOI tide table so append stays idempotent."""
+    start = advisory.find(TIDE_TABLE_MARKER)
+    if start == -1:
+        return advisory
+
+    rest = advisory[start:]
+    end_markers = [header for _, header in AUDIENCE_HEADERS] + [
+        "For small non-motorized fishing boats:",
+        "Reply DETAILS for full advisory.",
+        "Stay safe.",
+    ]
+    end_rel = None
+    for marker in end_markers:
+        idx = rest.find(marker)
+        if idx != -1 and (end_rel is None or idx < end_rel):
+            end_rel = idx
+
+    prefix = advisory[:start].rstrip()
+    if end_rel is None:
+        return prefix
+    return prefix + "\n\n" + rest[end_rel:].lstrip()
+
 def append_tide_table(advisory, tide_context, detail_level):
     if detail_level != "full" or tide_context.get("source") != "survey_of_india":
         return advisory
 
+    advisory = strip_tide_table(advisory)
     table = build_tide_table(tide_context)
     markers = [header for _, header in AUDIENCE_HEADERS] + [
         "For small non-motorized fishing boats:",
@@ -437,8 +463,8 @@ def process_coastal_safety(station, detail_level="short"):
     base_advisory = apply_monsoon_overlay(base_advisory, now_ist)
 
     short_advisory = apply_action_templates(base_advisory, station, detail_level="short")
+    # Cache full without the tide table; append a fresh table on every full response.
     full_advisory = apply_action_templates(base_advisory, station, detail_level="full")
-    full_advisory = append_tide_table(full_advisory, tide_context, detail_level="full")
     
     cache[loc] = {
         "date": today_str,
@@ -447,7 +473,9 @@ def process_coastal_safety(station, detail_level="short"):
     }
     save_json(CACHE_FILE, cache)
     
-    return full_advisory if detail_level == "full" else short_advisory
+    if detail_level == "full":
+        return append_tide_table(full_advisory, tide_context, detail_level="full")
+    return short_advisory
 
 # ==================== INTERFACE WEBHOOK ENDPOINTS ====================
 
