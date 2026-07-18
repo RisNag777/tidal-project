@@ -12,18 +12,23 @@ def _meters_to_feet(height_m):
 
 
 def format_tide_clock(event):
-    if "date" in event and "time" in event:
+    height_m = event.get("height_m")
+    if height_m is None and "height" in event:
+        height_m = event["height"]
+
+    if "date" in event and "time" in event and ":" in str(event.get("time", "")):
         time_label = event["time"]
         if time_label.startswith("0"):
             time_label = time_label[1:]
-        height_m = event["height_m"]
-        return f"{time_label} ({_meters_to_feet(height_m)} ft / {height_m:.2f}m)"
+    else:
+        tide_time = _parse_tide_time(event["date"])
+        time_label = tide_time.strftime("%I:%M %p")
+        if time_label.startswith("0"):
+            time_label = time_label[1:]
 
-    tide_time = _parse_tide_time(event["date"])
-    time_label = tide_time.strftime("%I:%M %p")
-    if time_label.startswith("0"):
-        time_label = time_label[1:]
-    height_m = event["height"]
+    # Pressure fallback has no real height — avoid printing "0.0 ft / 0.00m".
+    if height_m is None:
+        return time_label
     return f"{time_label} ({_meters_to_feet(height_m)} ft / {height_m:.2f}m)"
 
 
@@ -173,19 +178,19 @@ def _summarize_pressure_tides(pressures, start_idx, now_ist):
     high_time = now_ist + timedelta(hours=highest_idx)
     low_time = now_ist + timedelta(hours=lowest_idx)
 
-    def pseudo_event(when, tide_type, height):
+    def pseudo_event(when, tide_type):
         return {
             "date": when.strftime("%Y-%m-%d"),
             "time": when.strftime("%H:%M"),
-            "height_m": height,
+            "height_m": None,
             "type": tide_type,
             "tide_time": when,
         }
 
-    today_highs = [pseudo_event(high_time, "high", 0.0)] if highest_idx == 0 else []
-    today_lows = [pseudo_event(low_time, "low", 0.0)] if lowest_idx == 0 else []
-    next_high = None if highest_idx == 0 else pseudo_event(high_time, "high", 0.0)
-    next_low = None if lowest_idx == 0 else pseudo_event(low_time, "low", 0.0)
+    today_highs = [pseudo_event(high_time, "high")] if highest_idx == 0 else []
+    today_lows = [pseudo_event(low_time, "low")] if lowest_idx == 0 else []
+    next_high = None if highest_idx == 0 else pseudo_event(high_time, "high")
+    next_low = None if lowest_idx == 0 else pseudo_event(low_time, "low")
 
     parts = []
     if next_high:
@@ -198,6 +203,8 @@ def _summarize_pressure_tides(pressures, start_idx, now_ist):
         parts.append(f"Low water likely now ({format_tide_clock(today_lows[0])})")
 
     summary = " | ".join(parts) if parts else "Tide timing is uncertain."
+    if parts:
+        summary += " Heights unavailable until Survey of India posts this month's tables."
     return {
         "source": "pressure_fallback",
         "tide_clock_line": summary,

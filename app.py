@@ -300,7 +300,25 @@ def build_safety_prompt(station, telemetry, now_ist):
         if monsoon_block else
         "- Do not invent a monsoon ban if no monsoon alert lines are shown.\n"
     )
-    danger_label = SITE_DANGER_LABELS.get(station_site_type(station), "COASTAL CAUTION")
+    tide_source = telemetry.get("tide_source", "unavailable")
+    if tide_source == "survey_of_india":
+        tide_fact = f"- Official tide times (Survey of India): {telemetry['tide_summary']}"
+        tide_instruction = (
+            "Use the tide times exactly as written; do not invent clock times or heights."
+        )
+        tide_rules = (
+            "- Use the Survey of India tide sentence exactly as written; never report high and low water at the same time.\n"
+            "- Do not describe tides as \"pressure-based\" when official SOI times are provided.\n"
+        )
+    else:
+        tide_fact = f"- Approximate tide timing (estimate only, no official heights yet): {telemetry['tide_summary']}"
+        tide_instruction = (
+            "Treat tide timing as approximate. Do not invent tide heights in feet or meters."
+        )
+        tide_rules = (
+            "- Do not invent tide heights; SOI tables for this month are not loaded yet.\n"
+            "- Never invent matching high and low water at the same time.\n"
+        )
     # Prompt uses the short fishermen section; full audiences are applied in code.
     action_sections = build_action_sections(station, detail_level="short")
     return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
@@ -317,8 +335,8 @@ Current Time: {telemetry['current_time']}
 {{2-3 sentences describing current conditions. Use these telemetry facts:
 - Pressure trend: {telemetry['pressure_trend']} (current {telemetry['current_pressure']:.1f} hPa)
 - Wind trend: {telemetry['wind_trend']} (current {telemetry['current_wind']:.1f} km/h)
-- Official tide times (Survey of India): {telemetry['tide_summary']}
-State whether conditions are safe or risky for small boats. Use the tide times exactly as written; do not invent clock times.}}
+{tide_fact}
+State whether conditions are safe or risky for small boats. {tide_instruction}}}
 
 {action_sections}
 
@@ -326,9 +344,7 @@ Stay safe.
 
 Rules:
 - Replace {{placeholders}} with real content; do not leave braces in the output.
-- Use the Survey of India tide sentence exactly as written; never report high and low water at the same time.
-- Do not describe tides as "pressure-based" when official SOI times are provided.
-- Copy the audience action sections exactly as shown; do not invent, remove, or rewrite bullets.
+{tide_rules}- Copy the audience action sections exactly as shown; do not invent, remove, or rewrite bullets.
 {monsoon_rule}- Prefer elevated caution during monsoon season or strong wind.
 - Keep the header lines exactly as shown, including the location name, current time, and danger label.
 - Use plain text only."""
