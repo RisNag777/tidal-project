@@ -11,20 +11,20 @@ def _meters_to_feet(height_m):
     return round(height_m * 3.28084, 1)
 
 
+def _strip_leading_zero(time_label):
+    return time_label[1:] if time_label.startswith("0") else time_label
+
+
 def format_tide_clock(event):
     height_m = event.get("height_m")
     if height_m is None and "height" in event:
         height_m = event["height"]
 
     if "date" in event and "time" in event and ":" in str(event.get("time", "")):
-        time_label = event["time"]
-        if time_label.startswith("0"):
-            time_label = time_label[1:]
+        time_label = _strip_leading_zero(event["time"])
     else:
         tide_time = _parse_tide_time(event["date"])
-        time_label = tide_time.strftime("%I:%M %p")
-        if time_label.startswith("0"):
-            time_label = time_label[1:]
+        time_label = _strip_leading_zero(tide_time.strftime("%I:%M %p"))
 
     # Pressure fallback has no real height — avoid printing "0.0 ft / 0.00m".
     if height_m is None:
@@ -72,6 +72,23 @@ def _resolve_soi_port(station):
     return None
 
 
+def _events_on_date(events, day, tide_type):
+    return [
+        event
+        for event in events
+        if event["type"] == tide_type and event["tide_time"].date() == day
+    ]
+
+
+def _empty_tide_lists():
+    return {
+        "today_highs": [],
+        "today_lows": [],
+        "tomorrow_highs": [],
+        "tomorrow_lows": [],
+    }
+
+
 def _summarize_soi_tides(station, now_ist):
     payload = _load_soi_tides()
     if not payload:
@@ -81,8 +98,7 @@ def _summarize_soi_tides(station, now_ist):
     if not port_code:
         return None
 
-    current_month = now_ist.strftime("%Y-%m")
-    if payload.get("month") != current_month:
+    if payload.get("month") != now_ist.strftime("%Y-%m"):
         return None
 
     port_data = (payload.get("ports") or {}).get(port_code)
@@ -109,22 +125,10 @@ def _summarize_soi_tides(station, now_ist):
 
     today = now_ist.date()
     tomorrow = today + timedelta(days=1)
-    today_highs = [
-        event for event in parsed
-        if event["type"] == "high" and event["tide_time"].date() == today
-    ]
-    today_lows = [
-        event for event in parsed
-        if event["type"] == "low" and event["tide_time"].date() == today
-    ]
-    tomorrow_highs = [
-        event for event in parsed
-        if event["type"] == "high" and event["tide_time"].date() == tomorrow
-    ]
-    tomorrow_lows = [
-        event for event in parsed
-        if event["type"] == "low" and event["tide_time"].date() == tomorrow
-    ]
+    today_highs = _events_on_date(parsed, today, "high")
+    today_lows = _events_on_date(parsed, today, "low")
+    tomorrow_highs = _events_on_date(parsed, tomorrow, "high")
+    tomorrow_lows = _events_on_date(parsed, tomorrow, "low")
 
     clock_parts = []
     if next_high:
@@ -167,10 +171,7 @@ def _summarize_pressure_tides(pressures, start_idx, now_ist):
             "source": "pressure_fallback",
             "tide_clock_line": "Tide timing uncertain — use local shoreline markers.",
             "tide_summary": "Tide timing is uncertain due to limited forecast data.",
-            "today_highs": [],
-            "today_lows": [],
-            "tomorrow_highs": [],
-            "tomorrow_lows": [],
+            **_empty_tide_lists(),
         }
 
     highest_idx = window.index(max(window))
@@ -220,20 +221,18 @@ def _summarize_pressure_tides(pressures, start_idx, now_ist):
 
 def build_tide_table(tide_context):
     lines = ["Today's tide times (Survey of India):"]
-    if tide_context.get("today_highs"):
-        for event in tide_context["today_highs"]:
-            lines.append(f"- High: {format_tide_clock(event)}")
-    if tide_context.get("today_lows"):
-        for event in tide_context["today_lows"]:
-            lines.append(f"- Low: {format_tide_clock(event)}")
+    for event in tide_context.get("today_highs") or []:
+        lines.append(f"- High: {format_tide_clock(event)}")
+    for event in tide_context.get("today_lows") or []:
+        lines.append(f"- Low: {format_tide_clock(event)}")
     if not tide_context.get("today_highs") and not tide_context.get("today_lows"):
         lines.append("- See next tide times above.")
 
     if tide_context.get("tomorrow_highs") or tide_context.get("tomorrow_lows"):
         lines.append("Tomorrow:")
-        for event in tide_context.get("tomorrow_highs", []):
+        for event in tide_context.get("tomorrow_highs") or []:
             lines.append(f"- High: {format_tide_clock(event)}")
-        for event in tide_context.get("tomorrow_lows", []):
+        for event in tide_context.get("tomorrow_lows") or []:
             lines.append(f"- Low: {format_tide_clock(event)}")
     return "\n".join(lines)
 
@@ -250,8 +249,5 @@ def fetch_tide_context(station, now_ist, pressures=None, pressure_start_idx=0):
         "source": "unavailable",
         "tide_clock_line": "Tide timing unavailable — follow local shoreline markers.",
         "tide_summary": "Tide timing unavailable.",
-        "today_highs": [],
-        "today_lows": [],
-        "tomorrow_highs": [],
-        "tomorrow_lows": [],
+        **_empty_tide_lists(),
     }
