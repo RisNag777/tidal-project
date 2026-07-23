@@ -1,12 +1,12 @@
 # Karnataka Coastal Safety Agent
 
-WhatsApp / SMS / voice coastal safety advisories for Karnataka stations. The Flask app runs on a DigitalOcean droplet under **systemd**, pulls weather from Open-Meteo, builds advisories with Sarvam AI, and prefers official **Survey of India (SOI)** tide tables when the current month is synced.
+WhatsApp / SMS / voice coastal safety advisories for Karnataka stations. The Flask app runs on a DigitalOcean droplet under **systemd**, pulls weather from Open-Meteo, estimates tide timing from surface-pressure trends, and builds advisories with Sarvam AI.
 
 ## What it does
 
 - Users text a station name (e.g. `Malpe`, `Karwar`) over WhatsApp/SMS
 - Replies with a full advisory covering families, operators, and fishermen
-- Tide clock times come from SOI when `data/soi_tides.json` matches the current month; otherwise pressure-based fallback
+- Tide timing is estimated from Open-Meteo pressure trends (approximate, not official tide tables)
 - Voice calls default to Malpe Fishing Harbor
 
 ## Droplet layout
@@ -17,7 +17,6 @@ WhatsApp / SMS / voice coastal safety advisories for Karnataka stations. The Fla
 | `/root/tidal-project/tidal_env` | Python virtualenv |
 | `/root/tidal-project/.env` | Twilio + Sarvam secrets |
 | `/etc/systemd/system/tidal.service` | Systemd unit |
-| `/etc/cron.d/soi-tide` | Daily SOI tide sync (optional) |
 
 SSH (from your laptop, with your host alias):
 
@@ -54,33 +53,6 @@ sudo systemctl enable tidal
 sudo systemctl start tidal
 ```
 
-Optional — daily SOI tide sync (06:00 IST / 00:30 UTC):
-
-```bash
-mkdir -p /root/tidal-project/logs /root/tidal-project/data
-sudo cp deploy/soi-tide.cron /etc/cron.d/soi-tide
-sudo chmod 644 /etc/cron.d/soi-tide
-```
-
-Run an initial SOI sync (retries until the current month’s zip is published):
-
-```bash
-cd /root/tidal-project
-source tidal_env/bin/activate
-python -m soi_sync --force
-```
-
-SOI zip names vary by year. The syncer tries several patterns, including:
-
-- `AUGUST Tidal data 2026.zip`
-- `Tidal-August-2026.zip`
-
-Backfill a specific month if needed:
-
-```bash
-python -m soi_sync --force --month=2026-08
-```
-
 ## Start / stop / restart the service
 
 ```bash
@@ -97,7 +69,7 @@ cd /root/tidal-project
 git pull
 source tidal_env/bin/activate
 pip install -r requirements.txt
-# Clear stale advisories so format/tide changes take effect
+# Clear stale advisories so format changes take effect
 rm -f cache.json
 sudo systemctl restart tidal
 ```
@@ -110,9 +82,6 @@ journalctl -u tidal -f
 
 # Last 100 lines
 journalctl -u tidal -n 100 --no-pager
-
-# SOI sync log (if cron is installed)
-tail -f /root/tidal-project/logs/soi_sync.log
 ```
 
 ## Webhooks
@@ -135,8 +104,6 @@ These are created on the server and ignored by git:
 
 - `cache.json` — daily advisory cache
 - `station_registry.json` — query audit trail
-- `data/soi_tides.json` — parsed SOI tide events for the synced month
-- `data/soi_sync_state.json` — last sync attempt / success
 
 ## Local development (optional)
 
@@ -156,4 +123,4 @@ App listens on `0.0.0.0:5000` by default.
 
 ## Stations
 
-Configured in `stations.json` (Karwar, Kumta, Honnavar, Gangolli, Malpe, Mangaluru Bengre). Each station has a `site_type` and `soi_pdf_port` mapping to the nearest SOI tide PDF (`KARWAR`, `MANGLORE`, or `GANGRA`).
+Configured in `stations.json` (Karwar, Kumta, Honnavar, Gangolli, Malpe, Mangaluru Bengre). Each station has a `site_type` used for audience-specific action templates.

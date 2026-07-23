@@ -22,9 +22,6 @@ cache.json
 Cache.json
 station_registry.json
 temp_voice.ogg
-data/soi_tides.json
-data/soi_sync_state.json
-logs/
 
 # OS / editor noise
 .DS_Store

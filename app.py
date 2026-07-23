@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, Response
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.twiml.voice_response import VoiceResponse
-from tides import build_tide_table, fetch_tide_context
+from tides import compute_tide_timing
 
 load_dotenv()
 app = Flask(__name__)
@@ -210,37 +210,6 @@ def describe_trend(values, threshold):
         return "decreasing"
     return "steady"
 
-TIDE_TABLE_MARKER = "Today's tide times (Survey of India):"
-
-def strip_tide_table(advisory):
-    """Remove any previously inserted SOI tide table so append stays idempotent."""
-    start = advisory.find(TIDE_TABLE_MARKER)
-    if start == -1:
-        return advisory
-
-    rest = advisory[start:]
-    end_rel = earliest_marker_index(
-        rest,
-        audience_header_texts() + list(LEGACY_ACTION_MARKERS) + ["Stay safe."],
-    )
-    prefix = advisory[:start].rstrip()
-    if end_rel is None:
-        return prefix
-    return prefix + "\n\n" + rest[end_rel:].lstrip()
-
-def append_tide_table(advisory, tide_context):
-    if tide_context.get("source") != "survey_of_india":
-        return advisory
-
-    advisory = strip_tide_table(advisory)
-    table = build_tide_table(tide_context)
-    cut_at = earliest_marker_index(
-        advisory, audience_header_texts() + list(LEGACY_ACTION_MARKERS)
-    )
-    if cut_at is not None:
-        return advisory[:cut_at].rstrip() + "\n\n" + table + "\n\n" + advisory[cut_at:].lstrip()
-    return advisory.rstrip() + "\n\n" + table
-
 def build_safety_prompt(station, telemetry, now_ist):
     loc = station["location_name"]
     monsoon_block = monsoon_overlay_block(now_ist)
@@ -251,26 +220,6 @@ def build_safety_prompt(station, telemetry, now_ist):
         "- Do not invent a monsoon ban if no monsoon alert lines are shown.\n"
     )
     danger_label = SITE_DANGER_LABELS.get(station_site_type(station), "COASTAL CAUTION")
-    tide_source = telemetry.get("tide_source", "unavailable")
-    if tide_source == "survey_of_india":
-        tide_fact = f"- Official tide times (Survey of India): {telemetry['tide_summary']}"
-        tide_instruction = (
-            "Use the tide times exactly as written; do not invent clock times or heights."
-        )
-        tide_rules = (
-            "- Use the Survey of India tide sentence exactly as written; never report high and low water at the same time.\n"
-            "- Do not describe tides as \"pressure-based\" when official SOI times are provided.\n"
-        )
-    else:
-        tide_fact = f"- Approximate tide timing (estimate only, no official heights yet): {telemetry['tide_summary']}"
-        tide_instruction = (
-            "Treat tide timing as approximate. Do not invent tide heights in feet or meters."
-        )
-        tide_rules = (
-            "- Do not invent tide heights; SOI tables for this month are not loaded yet.\n"
-            "- Never invent matching high and low water at the same time.\n"
-        )
-    # Full audience sections are enforced again in apply_action_templates after generation.
     action_sections = build_action_sections(station)
     return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
 
@@ -286,8 +235,8 @@ Current Time: {telemetry['current_time']}
 {{2-3 sentences describing current conditions. Use these telemetry facts:
 - Pressure trend: {telemetry['pressure_trend']} (current {telemetry['current_pressure']:.1f} hPa)
 - Wind trend: {telemetry['wind_trend']} (current {telemetry['current_wind']:.1f} km/h)
-{tide_fact}
-State whether conditions are safe or risky for small boats. {tide_instruction}}}
+- Tide estimate (pressure-based, approximate): {telemetry['tide_summary']}
+State whether conditions are safe or risky for small boats. Do not contradict the tide estimate above.}}
 
 {action_sections}
 
@@ -295,7 +244,9 @@ Stay safe.
 
 Rules:
 - Replace {{placeholders}} with real content; do not leave braces in the output.
-{tide_rules}- Copy the audience action sections exactly as shown; do not invent, remove, or rewrite bullets.
+- Use the tide estimate sentence exactly as written; never report high and low water at the same time.
+- Do not invent exact tide heights in feet or meters.
+- Copy the audience action sections exactly as shown; do not invent, remove, or rewrite bullets.
 {monsoon_rule}- Prefer elevated caution during monsoon season or strong wind.
 - Keep the header lines exactly as shown, including the location name, current time, and danger label.
 - Use plain text only."""
@@ -370,9 +321,7 @@ def process_coastal_safety(station):
         if cached_advisory:
             print("💰 Cost Avoided! Returning pre-computed safety advisory from cache.")
             advisory = apply_monsoon_overlay(cached_advisory, now_ist)
-            result = apply_action_templates(advisory, station)
-            tide_context = fetch_tide_context(station, now_ist)
-            return append_tide_table(result, tide_context)
+            return apply_action_templates(advisory, station)
 
     params = {
         "latitude": float(station["latitude"]),
@@ -395,7 +344,7 @@ def process_coastal_safety(station):
 
     target_pressures = pressures[idx:idx + 12]
     target_winds = wind_speeds[idx:idx + 12]
-    tide_context = fetch_tide_context(station, now_ist, pressures, idx)
+    tide_timing = compute_tide_timing(pressures, idx)
 
     telemetry = {
         "current_time": format_ist_time(now_ist),
@@ -403,8 +352,7 @@ def process_coastal_safety(station):
         "current_wind": target_winds[0],
         "pressure_trend": describe_trend(target_pressures, 0.5),
         "wind_trend": describe_trend(target_winds, 2.0),
-        "tide_summary": tide_context["tide_summary"],
-        "tide_source": tide_context.get("source", "unavailable"),
+        "tide_summary": tide_timing["tide_summary"],
     }
 
     prompt = build_safety_prompt(station, telemetry, now_ist)
@@ -427,16 +375,14 @@ def process_coastal_safety(station):
     ai_response.raise_for_status()
     base_advisory = ai_response.json()["choices"][0]["message"]["content"]
     base_advisory = apply_monsoon_overlay(base_advisory, now_ist)
-
-    # Cache without the tide table; append a fresh table on every response.
     advisory = apply_action_templates(base_advisory, station)
+
     cache[loc] = {
         "date": today_str,
         "advisory": advisory,
     }
     save_json(CACHE_FILE, cache)
-
-    return append_tide_table(advisory, tide_context)
+    return advisory
 # ==================== Webhooks ====================
 
 @app.route("/webhook/whatsapp", methods=["POST"])
@@ -483,8 +429,6 @@ def voice_ivr_handler():
         "latitude": 13.3486,
         "longitude": 74.6961,
         "site_type": "harbor",
-        "soi_reference_port": "Mangalore",
-        "soi_pdf_port": "MANGLORE",
     }
     update_station_registry("Voice Phone Call Inbound Connection", default_station)
 
