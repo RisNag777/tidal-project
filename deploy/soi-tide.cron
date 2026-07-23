@@ -1,2 +1,0 @@
-# Daily at 06:00 IST (00:30 UTC) — retry each day until the current month's SOI zip is found.
-30 0 * * * root cd /root/tidal-project && mkdir -p logs data && /root/tidal-project/tidal_env/bin/python3 -m soi_sync >> /root/tidal-project/logs/soi_sync.log 2>&1
