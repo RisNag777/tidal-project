@@ -5,7 +5,7 @@ WhatsApp / SMS / voice coastal safety advisories for Karnataka stations. The Fla
 ## What it does
 
 - Users text a station name (e.g. `Malpe`, `Karwar`) over WhatsApp/SMS
-- Default reply is a **short** advisory (fishermen actions); reply `DETAILS` for the full multi-audience update
+- Replies with a full advisory covering families, operators, and fishermen
 - Tide clock times come from SOI when `data/soi_tides.json` matches the current month; otherwise pressure-based fallback
 - Voice calls default to Malpe Fishing Harbor
 
@@ -129,7 +129,6 @@ Ensure the droplet firewall / DigitalOcean cloud firewall allows inbound TCP **5
 These are created on the server and ignored by git:
 
 - `cache.json` — daily advisory cache
-- `user_sessions.json` — last station per WhatsApp/SMS sender (for `DETAILS`)
 - `station_registry.json` — query audit trail
 - `data/soi_tides.json` — parsed SOI tide events for the synced month
 - `data/soi_sync_state.json` — last sync attempt / success

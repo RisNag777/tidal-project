@@ -21,7 +21,7 @@ def run_broadbase_telemetry_refresh():
 
     for station in stations:
         print(f"🔄 Processing and pre-computing safety metrics for: {station['location_name']}")
-        process_coastal_safety(station, detail_level="short")
+        process_coastal_safety(station)
 
     print(
         f"✅ Pre-compute complete at {datetime.now().strftime('%H:%M:%S')}. "

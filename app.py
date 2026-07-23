@@ -21,16 +21,6 @@ SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY")
 STATIONS_FILE = "stations.json"
 CACHE_FILE = "cache.json"
 REGISTRY_FILE = "station_registry.json"
-USER_SESSIONS_FILE = "user_sessions.json"
-
-DETAILS_KEYWORDS = (
-    "more details",
-    "full advisory",
-    "full update",
-    "more info",
-    "details please",
-    "expand",
-)
 
 # --- HELPER DATA FUNCTIONS ---
 def load_json(filepath):
@@ -158,7 +148,6 @@ AUDIENCE_HEADERS = (
 
 LEGACY_ACTION_MARKERS = (
     "For small non-motorized fishing boats:",
-    "Reply DETAILS for full advisory.",
 )
 
 SITE_DANGER_LABELS = {
@@ -187,38 +176,22 @@ def actions_for(station, audience):
     templates = ACTION_TEMPLATES.get(site_type, ACTION_TEMPLATES["harbor"])
     return templates[audience]
 
-def wants_full_advisory(user_text):
-    text = user_text.lower().strip()
-    if text in {"details", "detail", "full", "more"}:
-        return True
-    if any(keyword in text for keyword in DETAILS_KEYWORDS):
-        return True
-    tokens = text.split()
-    return any(token in {"details", "detail", "full"} for token in tokens)
-
-def build_action_sections(station, detail_level="short"):
-    headers = AUDIENCE_HEADERS if detail_level == "full" else (
-        (AUDIENCE_HEADERS[-1][0], AUDIENCE_HEADERS[-1][1]),
-    )
+def build_action_sections(station):
     lines = []
-    for audience, header in headers:
+    for audience, header in AUDIENCE_HEADERS:
         lines.append(header)
         for bullet in actions_for(station, audience):
             lines.append(f"- {bullet}")
         lines.append("")
     return "\n".join(lines).rstrip()
 
-def apply_action_templates(advisory, station, detail_level="short"):
+def apply_action_templates(advisory, station):
     """Replace free-form action bullets with site-type templates."""
-    sections = build_action_sections(station, detail_level=detail_level)
+    sections = build_action_sections(station)
     cut_at = earliest_marker_index(
         advisory, audience_header_texts() + list(LEGACY_ACTION_MARKERS)
     )
-
-    if detail_level == "short":
-        closing = "Reply DETAILS for full advisory.\n\nStay safe."
-    else:
-        closing = "Stay safe."
+    closing = "Stay safe."
 
     stay_idx = advisory.rfind("Stay safe.")
     if cut_at is not None and stay_idx != -1 and cut_at < stay_idx:
@@ -226,25 +199,6 @@ def apply_action_templates(advisory, station, detail_level="short"):
     if stay_idx != -1:
         return advisory[:stay_idx].rstrip() + "\n\n" + sections + "\n\n" + closing
     return advisory.rstrip() + "\n\n" + sections + "\n\n" + closing
-
-def save_last_station(sender, station):
-    if not sender:
-        return
-    sessions = load_json(USER_SESSIONS_FILE)
-    sessions[sender] = {
-        "location_name": station["location_name"],
-        "latitude": station["latitude"],
-        "longitude": station["longitude"],
-        "site_type": station.get("site_type", "harbor"),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-    save_json(USER_SESSIONS_FILE, sessions)
-
-def get_last_station(sender):
-    if not sender:
-        return None
-    sessions = load_json(USER_SESSIONS_FILE)
-    return sessions.get(sender)
 
 def describe_trend(values, threshold):
     if len(values) < 2:
@@ -274,8 +228,8 @@ def strip_tide_table(advisory):
         return prefix
     return prefix + "\n\n" + rest[end_rel:].lstrip()
 
-def append_tide_table(advisory, tide_context, detail_level):
-    if detail_level != "full" or tide_context.get("source") != "survey_of_india":
+def append_tide_table(advisory, tide_context):
+    if tide_context.get("source") != "survey_of_india":
         return advisory
 
     advisory = strip_tide_table(advisory)
@@ -316,8 +270,8 @@ def build_safety_prompt(station, telemetry, now_ist):
             "- Do not invent tide heights; SOI tables for this month are not loaded yet.\n"
             "- Never invent matching high and low water at the same time.\n"
         )
-    # Prompt uses the short fishermen section; full audiences are applied in code.
-    action_sections = build_action_sections(station, detail_level="short")
+    # Full audience sections are enforced again in apply_action_templates after generation.
+    action_sections = build_action_sections(station)
     return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
 
 🌊 Safety Status Update: {loc}
@@ -405,23 +359,20 @@ def match_station_locally(user_text):
             return station
     return None
 
-def process_coastal_safety(station, detail_level="short"):
+def process_coastal_safety(station):
     cache = load_json(CACHE_FILE)
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     loc = station["location_name"]
-    cache_key = "full_advisory" if detail_level == "full" else "short_advisory"
     now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
 
     if loc in cache and cache[loc].get("date") == today_str:
-        cached_advisory = cache[loc].get(cache_key) or cache[loc].get("advisory")
+        cached_advisory = cache[loc].get("advisory") or cache[loc].get("full_advisory")
         if cached_advisory:
             print("💰 Cost Avoided! Returning pre-computed safety advisory from cache.")
             advisory = apply_monsoon_overlay(cached_advisory, now_ist)
-            result = apply_action_templates(advisory, station, detail_level=detail_level)
-            if detail_level == "full":
-                tide_context = fetch_tide_context(station, now_ist)
-                result = append_tide_table(result, tide_context, detail_level="full")
-            return result
+            result = apply_action_templates(advisory, station)
+            tide_context = fetch_tide_context(station, now_ist)
+            return append_tide_table(result, tide_context)
 
     params = {
         "latitude": float(station["latitude"]),
@@ -477,21 +428,15 @@ def process_coastal_safety(station, detail_level="short"):
     base_advisory = ai_response.json()["choices"][0]["message"]["content"]
     base_advisory = apply_monsoon_overlay(base_advisory, now_ist)
 
-    short_advisory = apply_action_templates(base_advisory, station, detail_level="short")
-    # Cache full without the tide table; append a fresh table on every full response.
-    full_advisory = apply_action_templates(base_advisory, station, detail_level="full")
-
+    # Cache without the tide table; append a fresh table on every response.
+    advisory = apply_action_templates(base_advisory, station)
     cache[loc] = {
         "date": today_str,
-        "short_advisory": short_advisory,
-        "full_advisory": full_advisory,
+        "advisory": advisory,
     }
     save_json(CACHE_FILE, cache)
 
-    if detail_level == "full":
-        return append_tide_table(full_advisory, tide_context, detail_level="full")
-    return short_advisory
-
+    return append_tide_table(advisory, tide_context)
 # ==================== Webhooks ====================
 
 @app.route("/webhook/whatsapp", methods=["POST"])
@@ -500,7 +445,6 @@ def incoming_message_handler():
     twiml_resp = MessagingResponse()
     try:
         incoming_text = request.values.get("Body", "").strip()
-        sender = request.values.get("From", "")
         num_media = int(request.values.get("NumMedia", 0))
         media_url = request.values.get("MediaUrl0", "")
 
@@ -510,27 +454,16 @@ def incoming_message_handler():
             user_query = transcribe_audio_via_sarvam(media_url)
             print(f"📝 Sarvam Audio Transcription: '{user_query}'")
 
-        wants_full = wants_full_advisory(user_query)
         station = match_station_locally(user_query)
-        if not station and wants_full:
-            station = get_last_station(sender)
-
         if not station:
-            if wants_full:
-                twiml_resp.message(
-                    "⚓ Please send your location first (e.g., Malpe, Karwar), then reply DETAILS for the full advisory."
-                )
-            else:
-                twiml_resp.message(
-                    "⚓ *Karnataka Coastal Safety Agent*\n\n"
-                    "Please state your location to check safety windows (e.g., Malpe, Karwar)."
-                )
+            twiml_resp.message(
+                "⚓ *Karnataka Coastal Safety Agent*\n\n"
+                "Please state your location to check safety windows (e.g., Malpe, Karwar)."
+            )
             return str(twiml_resp)
 
         update_station_registry(user_query, station)
-        save_last_station(sender, station)
-        detail_level = "full" if wants_full else "short"
-        advisory = process_coastal_safety(station, detail_level=detail_level)
+        advisory = process_coastal_safety(station)
         twiml_resp.message(advisory)
 
     except Exception:
@@ -555,7 +488,7 @@ def voice_ivr_handler():
     }
     update_station_registry("Voice Phone Call Inbound Connection", default_station)
 
-    advisory_script = process_coastal_safety(default_station, detail_level="short")
+    advisory_script = process_coastal_safety(default_station)
     location = default_station["location_name"]
 
     twiml_voice.say(
