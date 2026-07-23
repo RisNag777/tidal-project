@@ -70,10 +70,15 @@ source tidal_env/bin/activate
 python -m soi_sync --force
 ```
 
+SOI zip names vary by year. The syncer tries several patterns, including:
+
+- `AUGUST Tidal data 2026.zip`
+- `Tidal-August-2026.zip`
+
 Backfill a specific month if needed:
 
 ```bash
-python -m soi_sync --force --month=2026-06
+python -m soi_sync --force --month=2026-08
 ```
 
 ## Start / stop / restart the service

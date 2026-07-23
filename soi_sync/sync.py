@@ -48,8 +48,13 @@ def month_key(year, month):
 
 def build_download_urls(year, month):
     month_name = calendar.month_name[month]
+    upper_name = month_name.upper()
     lower_name = month_name.lower()
+    # Prefer the current SOI naming style first, then older patterns.
     return [
+        f"{SOI_BASE_URL}/{upper_name} Tidal data {year}.zip",
+        f"{SOI_BASE_URL}/{upper_name} Tidal Data {year}.zip",
+        f"{SOI_BASE_URL}/{month_name} Tidal data {year}.zip",
         f"{SOI_BASE_URL}/Tidal-{month_name}-{year}.zip",
         f"{SOI_BASE_URL}/tidal-data-{lower_name}-{year}.zip",
         f"{SOI_BASE_URL}/tidal-{lower_name}-{year}.zip",
