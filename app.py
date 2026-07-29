@@ -102,8 +102,8 @@ ACTION_TEMPLATES = {
         },
         "high": {
             "recreational": [
-                "Stay behind red flags within 50 m of the waterline — breaking waves cause head/spinal injury.",
-                "No water entry within 100 m of shore — shorebreak and boats make swimming fatal risk.",
+                "🚨 TOTAL WATER BAN. No water entry within 100 m of shore — shorebreak and boats make swimming fatal.",
+                "If on the beach, stay behind red flags ≥50 m from the waterline — breaking waves cause head/spinal injury.",
             ],
             "operators": [
                 "Suspend launches within 200 m of the beach — passenger injury and enforcement risk.",
@@ -147,8 +147,8 @@ ACTION_TEMPLATES = {
         },
         "high": {
             "recreational": [
-                "Stay ≥50 m from cliffs and ridges — falls onto shorebreak are unsurvivable.",
-                "No rock/water entry within 100 m of shore — rips pull into caves and reefs.",
+                "🚨 TOTAL WATER BAN. No rock or water entry within 100 m of shore — rips pull into caves and reefs.",
+                "If on shore, stay ≥50 m from cliffs and ridges — falls onto shorebreak are unsurvivable.",
             ],
             "operators": [
                 "Suspend cliff/rock tours within 100 m of foreshore — fall/surge exceeds guide control.",
@@ -192,8 +192,8 @@ ACTION_TEMPLATES = {
         },
         "high": {
             "recreational": [
-                "Stay ≥50 m from estuary banks — high water drops walkers into current.",
-                "No wading within 100 m of channels/sand spits — bar shifts create drown-out holes.",
+                "🚨 TOTAL WATER BAN. No wading within 100 m of channels/sand spits — bar shifts create drown-out holes.",
+                "If on shore, stay ≥50 m from estuary banks — high water drops walkers into current.",
             ],
             "operators": [
                 "Suspend tours within 500 m of the mouth — sandbar/tidal jet exceeds small-craft limits.",
@@ -310,18 +310,29 @@ def format_landmark_list(landmarks):
         return f"{landmarks[0]} and {landmarks[1]}"
     return ", ".join(landmarks[:-1]) + f", and {landmarks[-1]}"
 
-def landmark_zoning_line(station):
-    """Optional recreational bullet: numeric stay-near landmarks + profile outcome."""
+def landmark_zoning_line(station, risk_level):
+    """Optional recreational bullet: landmark zoning that matches swim vs total ban."""
     landmarks = station.get("landmarks") or []
     if not isinstance(landmarks, list) or not landmarks:
         return None
-    # Prefer first two landmarks to keep WhatsApp length down.
     zone = format_landmark_list(landmarks[:2])
     if not zone:
         return None
+    risk_level = normalize_risk_level(risk_level)
+    if risk_level == "high":
+        return (
+            f"If on shore, stay land-side near the {zone} behind barriers — "
+            f"do not enter the water."
+        )
     profile = station_coast_profile(station)
     outcome = LANDMARK_OUTCOMES.get(profile, LANDMARK_OUTCOMES["A"])
     return f"Stay within 50 m of the {zone} — {outcome}."
+
+def emergency_footer(station):
+    line = (station.get("emergency_line") or "").strip()
+    if line:
+        return line
+    return "📞 Emergency: Dial 112"
 
 def normalize_risk_level(risk_level):
     if risk_level in RISK_RANK:
@@ -399,9 +410,13 @@ def actions_for(station, audience, risk_level):
     by_risk = by_profile.get(normalize_risk_level(risk_level), by_profile["elevated"])
     bullets = list(by_risk[audience])
     if audience == "recreational":
-        zoning = landmark_zoning_line(station)
+        zoning = landmark_zoning_line(station, risk_level)
         if zoning:
-            bullets.insert(0, zoning)
+            # After water-ban line when present; otherwise lead with zoning.
+            if bullets and "TOTAL WATER BAN" in bullets[0]:
+                bullets.insert(1, zoning)
+            else:
+                bullets.insert(0, zoning)
     return bullets
 
 def build_action_sections(station, risk_level):
@@ -419,7 +434,7 @@ def apply_action_templates(advisory, station, risk_level):
     cut_at = earliest_marker_index(
         advisory, audience_header_texts() + list(LEGACY_ACTION_MARKERS)
     )
-    closing = "Stay safe."
+    closing = "Stay safe.\n\n" + emergency_footer(station)
 
     stay_idx = advisory.rfind("Stay safe.")
     if cut_at is not None and stay_idx != -1 and cut_at < stay_idx:
@@ -448,6 +463,32 @@ def describe_trend(values, threshold):
         return "decreasing"
     return "steady"
 
+def impact_trend_label(values, soft_threshold, strong_threshold, rising_word, falling_word):
+    """Layperson trend label: Rising / Rising fast / Falling / Falling fast / Steady."""
+    if len(values) < 2:
+        return "Steady"
+    delta = values[-1] - values[0]
+    if delta >= strong_threshold:
+        return f"{rising_word} fast"
+    if delta > soft_threshold:
+        return rising_word
+    if delta <= -strong_threshold:
+        return f"{falling_word} fast"
+    if delta < -soft_threshold:
+        return falling_word
+    return "Steady"
+
+def build_weather_line(pressure, pressures_window, wind, winds_window, wave_m):
+    pressure_label = impact_trend_label(pressures_window, 0.5, 2.0, "Rising", "Falling")
+    wind_label = impact_trend_label(winds_window, 2.0, 8.0, "Rising", "Easing")
+    parts = [
+        f"Pressure: {pressure_label} ({pressure:.0f} hPa)",
+        f"Winds: {wind_label} ({wind:.0f} km/h)",
+    ]
+    if wave_m is not None:
+        parts.append(f"Waves: {wave_m:.1f} m")
+    return " | ".join(parts)
+
 def build_safety_prompt(station, telemetry, now_ist):
     loc = station["location_name"]
     risk_level = normalize_risk_level(telemetry["risk_level"])
@@ -463,11 +504,12 @@ def build_safety_prompt(station, telemetry, now_ist):
     danger_label = danger_label_for(station, risk_level)
     boat_sentence = RISK_BOAT_SENTENCES[risk_level]
     action_sections = build_action_sections(station, risk_level)
-    wave_fact = (
-        f"- Wave height: {telemetry['current_wave']:.1f} m"
-        if telemetry.get("current_wave") is not None
-        else "- Wave height: unavailable"
+    conditions_block = (
+        f"{telemetry['weather_line']}\n"
+        f"Tide: {telemetry['tide_summary']}\n"
+        f"{boat_sentence}"
     )
+    emergency = emergency_footer(station)
     return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
 
 🌊 Safety Status Update: {loc}
@@ -479,25 +521,21 @@ Current Time: {telemetry['current_time']}
 
 ⚠️ {danger_label}
 
-{{1-2 short sentences on conditions only. Use these facts; do not repeat every number if space is tight:
-- Pressure trend: {telemetry['pressure_trend']} (current {telemetry['current_pressure']:.1f} hPa)
-- Wind trend: {telemetry['wind_trend']} (current {telemetry['current_wind']:.1f} km/h)
-{wave_fact}
-- Tide estimate: {telemetry['tide_summary']}
-End with this exact boat-risk sentence: {boat_sentence}
-Match telemetry tone; do not invent stronger wind, waves, or urgency.}}
+{conditions_block}
 
 {action_sections}
 
 Stay safe.
 
+{emergency}
+
 Rules:
-- Replace {{placeholders}} with real content; do not leave braces in the output.
-- Keep the whole advisory concise for WhatsApp (under 1400 characters if possible).
-- Use the tide estimate sentence exactly as written; never report high and low water at the same time.
-- Do not invent exact tide heights in feet or meters.
-- Use the boat-risk sentence exactly as written; do not replace it with a different safe/risky judgment.
+- Copy the conditions block (weather, Tide, and boat-risk sentence) exactly as shown; do not rephrase numbers or invent stronger weather.
 - Copy the audience action sections exactly as shown; do not invent, remove, or rewrite bullets.
+- Keep TOTAL WATER BAN as the first swimmer bullet when present; do not soften it.
+- Do not invent exact tide heights in feet or meters.
+- Keep the emergency contact line exactly as shown at the bottom.
+- Keep the whole advisory concise for WhatsApp (under 1400 characters if possible).
 {monsoon_rule}- Keep the header lines exactly as shown, including the advisory title, location name, current time, and danger label.
 - Use plain text only."""
 
@@ -597,7 +635,7 @@ def process_coastal_safety(station):
         station["latitude"], station["longitude"], now_ist
     )
     risk_level = compute_risk_level(current_wind, current_wave, in_monsoon)
-    tide_timing = compute_tide_timing(pressures, idx)
+    tide_timing = compute_tide_timing(pressures, idx, now_ist=now_ist)
 
     cached = cache.get(loc) or {}
     cached_advisory = cached.get("advisory") or cached.get("full_advisory")
@@ -620,6 +658,13 @@ def process_coastal_safety(station):
         "current_wave": current_wave,
         "pressure_trend": describe_trend(target_pressures, 0.5),
         "wind_trend": describe_trend(target_winds, 2.0),
+        "weather_line": build_weather_line(
+            float(target_pressures[0]),
+            target_pressures,
+            current_wind,
+            target_winds,
+            current_wave,
+        ),
         "tide_summary": tide_timing["tide_summary"],
         "risk_level": risk_level,
     }
@@ -706,6 +751,7 @@ def voice_ivr_handler():
         "site_type": "harbor",
         "coast_profile": "A",
         "landmarks": ["concrete jetty", "public Sea Walkway", "lifeguard watchtower"],
+        "emergency_line": "📞 Malpe Harbor / Coastal Security: Dial 112",
     }
     update_station_registry("Voice Phone Call Inbound Connection", default_station)
 

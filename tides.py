@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+
 def format_eta(minutes):
     if minutes == 0:
         return "now"
@@ -10,15 +13,19 @@ def format_eta(minutes):
     return f"in about {hours} {hour_label} {rem} minutes"
 
 
-def compute_tide_timing(pressures, start_idx, window_hours=12):
+def format_tide_clock(now_ist, minutes):
+    """Clock label for an offset from now (pressure-based estimate)."""
+    when = now_ist + timedelta(minutes=minutes)
+    label = when.strftime("%I:%M %p")
+    return label[1:] if label.startswith("0") else label
+
+
+def compute_tide_timing(pressures, start_idx, now_ist=None, window_hours=12):
     """Estimate high/low water from Open-Meteo surface-pressure trends."""
     window = pressures[start_idx:start_idx + window_hours]
     if len(window) < 3:
         return {
-            "tide_summary": (
-                "Tide timing is uncertain due to limited forecast data. "
-                "Use local shoreline markers and harbor signals."
-            ),
+            "tide_summary": "Tide timing uncertain — use local shoreline markers.",
         }
 
     highest_idx = window.index(max(window))
@@ -28,10 +35,27 @@ def compute_tide_timing(pressures, start_idx, window_hours=12):
 
     if highest_idx == lowest_idx:
         return {
-            "tide_summary": (
-                "No clear high or low water signal in the next 12 hours. "
-                "Pressure appears steady; rely on local tide knowledge."
-            ),
+            "tide_summary": "No clear high/low signal in the next 12 hours.",
+        }
+
+    # Prefer explicit peak clocks when we have a current timestamp.
+    if now_ist is not None:
+        high_clock = format_tide_clock(now_ist, high_mins)
+        low_clock = format_tide_clock(now_ist, low_mins)
+        if highest_idx == 0:
+            return {
+                "tide_summary": f"Peak High now (~{high_clock}) | Next Low at {low_clock}",
+            }
+        if lowest_idx == 0:
+            return {
+                "tide_summary": f"Peak Low now (~{low_clock}) | Next High at {high_clock}",
+            }
+        if high_mins < low_mins:
+            return {
+                "tide_summary": f"Peak High at {high_clock} | Next Low at {low_clock}",
+            }
+        return {
+            "tide_summary": f"Peak Low at {low_clock} | Next High at {high_clock}",
         }
 
     if highest_idx == 0:
