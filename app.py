@@ -78,7 +78,7 @@ ACTION_TEMPLATES = {
                 "Keep kids within arm's reach in the swim zone — boat wash can knock them down.",
             ],
             "operators": [
-                "Keep jet skis and banana boats ≥50 m outside the swim zone — collision risk with families.",
+                "Keep jet skis and banana boats at least 50 m outside the swim zone — collision risk with families.",
                 "Pause boat rides if red flags rise within 100 m — continuing risks injury and fines.",
             ],
             "fishermen": [
@@ -89,29 +89,29 @@ ACTION_TEMPLATES = {
         "elevated": {
             "recreational": [
                 "Stay behind red flags within 50 m of the waterline — shorebreak can slam you into fencing.",
-                "Keep kids on upper walkways ≥30 m from surge — boat wash and shorebreak sweep seaward.",
+                "Keep kids on upper walkways at least 30 m from surge — boat wash and shorebreak sweep seaward.",
             ],
             "operators": [
                 "Limit boat rides to within 100 m of the harbor entrance — swell outside flips small craft.",
-                "Keep boats and ride equipment ≥50 m from family beach zones — propeller hazard near the jetty.",
+                "Keep boats and ride equipment at least 50 m from family beach zones — propeller hazard near the jetty.",
             ],
             "fishermen": [
                 "Stay within 200 m of the harbor opening — traffic and swell stack beyond.",
-                "Avoid the kodi (where river meets sea) within 150 m in building swell — currents pin boats to the jetty.",
+                "Stay at least 150 m from where the river meets the sea in building swell — currents pin boats to the jetty.",
             ],
         },
         "high": {
             "recreational": [
                 "🚨 TOTAL WATER BAN. No water entry within 100 m of shore — shorebreak and boats make swimming fatal.",
-                "If on the beach, stay behind red flags ≥50 m from the waterline — breaking waves cause head/spinal injury.",
+                "If on the beach, stay behind red flags at least 50 m from the waterline — breaking waves cause head/spinal injury.",
             ],
             "operators": [
                 "Stop all boat rides and jet ski trips within 200 m of the beach — injury and fine risk.",
-                "Keep all boats and ride equipment ≥50 m inland from the wet sand — gear near water becomes dangerous in surge.",
+                "Keep all boats and ride equipment at least 50 m inland from the wet sand — gear near water becomes dangerous in surge.",
             ],
             "fishermen": [
                 "Keep boats tied inside the protected harbor walls — leaving now risks capsize at the harbor opening.",
-                "Stay clear of the kodi (river–sea junction) and harbor wall ends within 200 m — surge can smash boats into concrete.",
+                "Stay at least 200 m from where the river meets the sea and from harbor wall ends — surge can smash boats into concrete.",
             ],
         },
     },
@@ -119,7 +119,7 @@ ACTION_TEMPLATES = {
     "B": {
         "low": {
             "recreational": [
-                "Stay ≥10 m back from cliff edges — wet rock causes falls onto shorebreak.",
+                "Stay at least 10 m back from cliff edges — wet rock causes falls onto shorebreak.",
                 "Avoid selfie spots within 5 m of drop-offs — shorebreak can cause spinal injury.",
             ],
             "operators": [
@@ -127,28 +127,28 @@ ACTION_TEMPLATES = {
                 "Stop tours if red flags rise within 100 m — continuing exposes guests to cliff falls.",
             ],
             "fishermen": [
-                "Cast ≥15 m from cliff faces — spray zones knock anglers into surge.",
+                "Cast at least 15 m from cliff faces — spray zones knock anglers into surge.",
                 "Exit if a rip pulls within 50 m — fighting toward rocks risks drowning.",
             ],
         },
         "elevated": {
             "recreational": [
-                "Stay ≥20 m from cliffs and rock ridges — spray-slick edges cause fatal falls.",
-                "Keep kids within arm's reach ≥50 m from water — rips along ridges sweep fast.",
+                "Stay at least 20 m from cliffs and rock ridges — spray-slick edges cause fatal falls.",
+                "Keep kids within arm's reach at least 50 m from water — rips along ridges sweep fast.",
             ],
             "operators": [
-                "Limit groups to overlooks ≥25 m from drop-offs — crowd pressure causes falls.",
+                "Limit groups to overlooks at least 25 m from drop-offs — crowd pressure causes falls.",
                 "Avoid boat rides within 100 m of rock points — rebound swell flips craft onto reefs.",
             ],
             "fishermen": [
                 "Avoid casting within 30 m of rock points in rising swell — shorebreak sweeps ledges.",
-                "Keep boats ≥100 m off rock ridges — reefs and rips cause grounding/capsize.",
+                "Keep boats at least 100 m off rock ridges — reefs and rips cause grounding/capsize.",
             ],
         },
         "high": {
             "recreational": [
                 "🚨 TOTAL WATER BAN. No rock or water entry within 100 m of shore — rips pull into caves and reefs.",
-                "If on shore, stay ≥50 m from cliffs and ridges — falls onto shorebreak are unsurvivable.",
+                "If on shore, stay at least 50 m from cliffs and ridges — falls onto shorebreak are unsurvivable.",
             ],
             "operators": [
                 "Stop cliff and rock tours within 100 m of the shore — fall/surge exceeds guide control.",
@@ -156,7 +156,7 @@ ACTION_TEMPLATES = {
             ],
             "fishermen": [
                 "Stay off rock ledges within 100 m of surge — one set can throw you onto basalt.",
-                "Keep boats ≥200 m off rock ridges — reefs/rips cause rapid grounding.",
+                "Keep boats at least 200 m off rock ridges — reefs/rips cause rapid grounding.",
             ],
         },
     },
@@ -165,43 +165,43 @@ ACTION_TEMPLATES = {
         "low": {
             "recreational": [
                 "Keep kids within arm's reach on bank paths — mud within 10 m hides drop-offs.",
-                "Stay ≥20 m from unmarked channel edges — tidal cuts trap waders.",
+                "Stay at least 20 m from unmarked channel edges — tidal cuts trap waders.",
             ],
             "operators": [
-                "Run boat rides ≥200 m inland of the kodi (where river meets sea) — mouth currents flip small craft.",
-                "Stop trips if current accelerates within 100 m of the kodi — boats can broach on sandbars.",
+                "Run boat rides at least 200 m inland of where the river meets the sea — mouth currents flip small craft.",
+                "Stop trips if current accelerates within 100 m of where the river meets the sea — boats can broach on sandbars.",
             ],
             "fishermen": [
-                "Work channels ≥150 m inland of the kodi — confluence rips foul shore nets.",
+                "Work channels at least 150 m inland of where the river meets the sea — strong rips foul shore nets.",
                 "Check the sandbar within 50 m before crossing — unseen cuts ground and roll craft.",
             ],
         },
         "elevated": {
             "recreational": [
-                "Stay ≥30 m from estuary banks at higher water — undercut edges collapse.",
+                "Stay at least 30 m from estuary banks at higher water — undercut edges collapse.",
                 "No wading within 50 m of channels/sand spits — tidal jets sweep kids seaward.",
             ],
             "operators": [
-                "Limit boat rides to ≥300 m inland of the kodi — bars and opposing currents broach hulls.",
-                "Keep boats off the kodi within 200 m — rapid jets cause capsizes.",
+                "Limit boat rides to at least 300 m inland of where the river meets the sea — bars and opposing currents broach hulls.",
+                "Keep boats at least 200 m from where the river meets the sea — rapid jets cause capsizes.",
             ],
             "fishermen": [
-                "Avoid the kodi within 200 m in strong current — outflow pins nets and canoes.",
-                "Secure gear ≥150 m inland of the sea — mouth surge shreds shore nets.",
+                "Stay at least 200 m from where the river meets the sea in strong current — outflow pins nets and canoes.",
+                "Secure gear at least 150 m inland of the sea — mouth surge shreds shore nets.",
             ],
         },
         "high": {
             "recreational": [
                 "🚨 TOTAL WATER BAN. No wading within 100 m of channels/sand spits — bar shifts create drown-out holes.",
-                "If on shore, stay ≥50 m from estuary banks — high water drops walkers into current.",
+                "If on shore, stay at least 50 m from estuary banks — high water drops walkers into current.",
             ],
             "operators": [
-                "Stop all boat rides within 500 m of the kodi — sandbar and tidal jet exceed small-boat limits.",
-                "Keep boats ≥300 m inland of the kodi — crossing the mouth is a capsize zone.",
+                "Stop all boat rides within 500 m of where the river meets the sea — sandbar and tidal jet exceed small-boat limits.",
+                "Keep boats at least 300 m inland of where the river meets the sea — crossing the mouth is a capsize zone.",
             ],
             "fishermen": [
-                "Avoid the kodi within 300 m at peak tide — current vs swell can roll craft.",
-                "Stay off sandbars within 150 m of the kodi — bars collapse into drop-offs.",
+                "Stay at least 300 m from where the river meets the sea at peak tide — current vs swell can roll craft.",
+                "Stay off sandbars within 150 m of where the river meets the sea — bars collapse into drop-offs.",
             ],
         },
     },
