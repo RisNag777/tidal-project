@@ -68,75 +68,219 @@ def apply_monsoon_overlay(advisory, now_ist):
         return f"{header}\n\n{block}\n\n{rest}"
     return f"{header}\n\n{block}"
 
-# Audience-specific actions keyed by station site_type
+# Audience actions by site_type and live risk_level (low / elevated / high)
 ACTION_TEMPLATES = {
     "harbor": {
-        "recreational": [
-            "Stay behind shoreline barricades and red-flag markers.",
-            "Do not enter the water for swimming, wading, or photos.",
-            "Keep children on upper dry walkways away from breaking waves.",
-        ],
-        "operators": [
-            "Suspend recreational water sports and beach boat launches.",
-            "Keep jet skis, banana boats, and rental craft grounded.",
-            "Do not bring equipment near the shore during peak high tide.",
-        ],
-        "fishermen": [
-            "Remain docked inside the protected harbor.",
-            "Do not launch from shore during peak high tide.",
-            "Avoid the river mouth and breakwater until water eases.",
-        ],
+        "low": {
+            "recreational": [
+                "Swim only in marked zones and watch children near the waterline.",
+                "Stay clear of working boats and slipways.",
+                "Leave the water if red flags go up or patrols advise.",
+            ],
+            "operators": [
+                "Run recreational launches only in calm, marked waters.",
+                "Brief passengers on life jackets before departure.",
+                "Pause operations if wind or swell picks up.",
+            ],
+            "fishermen": [
+                "Check harbor mouth conditions before leaving the basin.",
+                "Carry life jackets and keep VHF or phone contact.",
+                "Return early if wind or swell builds.",
+            ],
+        },
+        "elevated": {
+            "recreational": [
+                "Stay behind shoreline barricades when red flags are shown.",
+                "Avoid swimming near the river mouth or breakwater.",
+                "Keep children on upper dry walkways away from surge.",
+            ],
+            "operators": [
+                "Limit recreational launches; prefer sheltered water only.",
+                "Keep jet skis and rental craft close to shore.",
+                "Do not operate near the breakwater in building swell.",
+            ],
+            "fishermen": [
+                "Favor short trips inside or just outside the harbor.",
+                "Avoid the river mouth if swell is building.",
+                "Secure gear before peak tide and rising wind.",
+            ],
+        },
+        "high": {
+            "recreational": [
+                "Stay behind shoreline barricades and red-flag markers.",
+                "Do not enter the water for swimming, wading, or photos.",
+                "Keep children on upper dry walkways away from breaking waves.",
+            ],
+            "operators": [
+                "Suspend recreational water sports and beach boat launches.",
+                "Keep jet skis, banana boats, and rental craft grounded.",
+                "Do not bring equipment near the shore during peak high tide.",
+            ],
+            "fishermen": [
+                "Remain docked inside the protected harbor.",
+                "Do not launch from shore during peak high tide.",
+                "Avoid the river mouth and breakwater until water eases.",
+            ],
+        },
     },
     "backwater": {
-        "recreational": [
-            "Avoid sandbars and channel edges during rising water.",
-            "Stay off mud flats that can flood quickly on incoming tide.",
-            "Follow local patrol instructions and red-flag warnings.",
-        ],
-        "operators": [
-            "Suspend ferry or joyride operations in narrow channels.",
-            "Ground all rental craft until water levels ease.",
-            "Keep passengers away from estuary entry points.",
-        ],
-        "fishermen": [
-            "Do not cross the backwater mouth during peak high tide.",
-            "Keep small boats tied inside sheltered channels.",
-            "Watch for strong currents where the backwater meets the sea.",
-        ],
+        "low": {
+            "recreational": [
+                "Stay on marked paths and watch for soft mud at the edges.",
+                "Supervise children near channel banks.",
+                "Follow local patrol instructions if posted.",
+            ],
+            "operators": [
+                "Run ferries and joyrides only in sheltered channels.",
+                "Brief passengers before boarding.",
+                "Delay trips if rain squalls or strong current appear.",
+            ],
+            "fishermen": [
+                "Work sheltered channels; watch current at bends.",
+                "Keep life jackets aboard small craft.",
+                "Avoid the sea mouth if swell is visible outside.",
+            ],
+        },
+        "elevated": {
+            "recreational": [
+                "Avoid sandbars and channel edges during rising water.",
+                "Stay off mud flats that can flood on the incoming tide.",
+                "Follow local patrol instructions and red-flag warnings.",
+            ],
+            "operators": [
+                "Reduce ferry or joyride runs in narrow channels.",
+                "Keep rental craft in the most sheltered stretches.",
+                "Keep passengers away from the sea mouth.",
+            ],
+            "fishermen": [
+                "Avoid crossing the backwater mouth in building current.",
+                "Keep small boats ready to tie up in sheltered channels.",
+                "Watch for strong currents where the backwater meets the sea.",
+            ],
+        },
+        "high": {
+            "recreational": [
+                "Avoid sandbars and channel edges during rising water.",
+                "Stay off mud flats that can flood quickly on incoming tide.",
+                "Follow local patrol instructions and red-flag warnings.",
+            ],
+            "operators": [
+                "Suspend ferry or joyride operations in narrow channels.",
+                "Ground all rental craft until water levels ease.",
+                "Keep passengers away from estuary entry points.",
+            ],
+            "fishermen": [
+                "Do not cross the backwater mouth during peak high tide.",
+                "Keep small boats tied inside sheltered channels.",
+                "Watch for strong currents where the backwater meets the sea.",
+            ],
+        },
     },
     "estuary": {
-        "recreational": [
-            "Stay away from estuary banks during high water.",
-            "Do not wade into channels or sand spits.",
-            "Use designated walkways only.",
-        ],
-        "operators": [
-            "Suspend small craft tours through the estuary.",
-            "Keep all passenger boats away from the river mouth.",
-            "Monitor district advisories before resuming service.",
-        ],
-        "fishermen": [
-            "Do not attempt to cross the estuary mouth at peak tide.",
-            "Secure nets and canoes in sheltered inland channels.",
-            "Watch for rip currents where river flow meets the sea.",
-        ],
+        "low": {
+            "recreational": [
+                "Use designated walkways along the estuary banks.",
+                "Do not wade into unmarked channels.",
+                "Supervise children near the waterline.",
+            ],
+            "operators": [
+                "Run small-craft tours only in calm, inland stretches.",
+                "Brief passengers and check life jackets.",
+                "Turn back if current or wind strengthens.",
+            ],
+            "fishermen": [
+                "Work inland channels first; check the mouth before crossing.",
+                "Secure nets if the tide is rising quickly.",
+                "Carry life jackets on every trip.",
+            ],
+        },
+        "elevated": {
+            "recreational": [
+                "Stay away from estuary banks during higher water.",
+                "Do not wade into channels or sand spits.",
+                "Use designated walkways only.",
+            ],
+            "operators": [
+                "Limit small craft tours; avoid the river mouth.",
+                "Keep passenger boats in sheltered inland water.",
+                "Monitor district advisories before extending trips.",
+            ],
+            "fishermen": [
+                "Avoid the estuary mouth if current is strong.",
+                "Secure nets and canoes in sheltered inland channels.",
+                "Watch for rip currents where river flow meets the sea.",
+            ],
+        },
+        "high": {
+            "recreational": [
+                "Stay away from estuary banks during high water.",
+                "Do not wade into channels or sand spits.",
+                "Use designated walkways only.",
+            ],
+            "operators": [
+                "Suspend small craft tours through the estuary.",
+                "Keep all passenger boats away from the river mouth.",
+                "Monitor district advisories before resuming service.",
+            ],
+            "fishermen": [
+                "Do not attempt to cross the estuary mouth at peak tide.",
+                "Secure nets and canoes in sheltered inland channels.",
+                "Watch for rip currents where river flow meets the sea.",
+            ],
+        },
     },
     "port": {
-        "recreational": [
-            "Stay off port breakwaters and restricted quay areas.",
-            "Do not swim near shipping channels or dock walls.",
-            "Observe port security and safety signage.",
-        ],
-        "operators": [
-            "Delay non-essential port transits for small passenger craft.",
-            "Keep commercial launches inside protected basins.",
-            "Follow harbor master instructions.",
-        ],
-        "fishermen": [
-            "Remain alongside port docks until tide and wind ease.",
-            "Do not leave protected harbor waters in small craft.",
-            "Secure gear before peak high water.",
-        ],
+        "low": {
+            "recreational": [
+                "Stay off restricted quay and breakwater areas.",
+                "Do not swim near shipping channels or dock walls.",
+                "Observe port security and safety signage.",
+            ],
+            "operators": [
+                "Run passenger craft only inside protected basins when seas are calm.",
+                "Brief crews on traffic separation and life jackets.",
+                "Follow harbor master instructions.",
+            ],
+            "fishermen": [
+                "Check wind and swell before leaving the basin.",
+                "Keep trips short and stay near protected waters if unsure.",
+                "Secure gear before peak tide.",
+            ],
+        },
+        "elevated": {
+            "recreational": [
+                "Stay off port breakwaters and restricted quay areas.",
+                "Do not swim near shipping channels or dock walls.",
+                "Observe port security and safety signage.",
+            ],
+            "operators": [
+                "Limit non-essential port transits for small passenger craft.",
+                "Prefer protected basins over open approaches.",
+                "Follow harbor master instructions.",
+            ],
+            "fishermen": [
+                "Stay close to protected harbor waters in small craft.",
+                "Postpone open-coast legs if swell is building.",
+                "Secure gear before peak high water.",
+            ],
+        },
+        "high": {
+            "recreational": [
+                "Stay off port breakwaters and restricted quay areas.",
+                "Do not swim near shipping channels or dock walls.",
+                "Observe port security and safety signage.",
+            ],
+            "operators": [
+                "Delay non-essential port transits for small passenger craft.",
+                "Keep commercial launches inside protected basins.",
+                "Follow harbor master instructions.",
+            ],
+            "fishermen": [
+                "Remain alongside port docks until tide and wind ease.",
+                "Do not leave protected harbor waters in small craft.",
+                "Secure gear before peak high water.",
+            ],
+        },
     },
 }
 
@@ -150,12 +294,50 @@ LEGACY_ACTION_MARKERS = (
     "For small non-motorized fishing boats:",
 )
 
+# Site labels soften/harden with live risk (monsoon banner stays separate)
 SITE_DANGER_LABELS = {
-    "harbor": "HARBOR / RIVER-MOUTH CAUTION",
-    "backwater": "BACKWATER DANGER",
-    "estuary": "ESTUARY DANGER",
-    "port": "PORT CAUTION",
+    "harbor": {
+        "low": "HARBOR NOTICE",
+        "elevated": "HARBOR / RIVER-MOUTH CAUTION",
+        "high": "HARBOR / RIVER-MOUTH WARNING",
+    },
+    "backwater": {
+        "low": "BACKWATER NOTICE",
+        "elevated": "BACKWATER CAUTION",
+        "high": "BACKWATER DANGER",
+    },
+    "estuary": {
+        "low": "ESTUARY NOTICE",
+        "elevated": "ESTUARY CAUTION",
+        "high": "ESTUARY DANGER",
+    },
+    "port": {
+        "low": "PORT NOTICE",
+        "elevated": "PORT CAUTION",
+        "high": "PORT WARNING",
+    },
 }
+
+RISK_ADVISORY_TITLES = {
+    "low": "Safety Advisory",
+    "elevated": "Caution Advisory",
+    "high": "Urgent Safety Advisory",
+}
+
+RISK_BOAT_SENTENCES = {
+    "low": "Conditions are manageable for experienced small craft.",
+    "elevated": "Conditions call for extra caution for small boats.",
+    "high": "Conditions are risky for small boats.",
+}
+
+RISK_RANK = {"low": 0, "elevated": 1, "high": 2}
+RISK_LEVELS = ("low", "elevated", "high")
+
+# Small-craft thresholds (Open-Meteo wind km/h, significant wave height m)
+WIND_ELEVATED_KMH = 20.0
+WIND_HIGH_KMH = 35.0
+WAVE_ELEVATED_M = 1.0
+WAVE_HIGH_M = 1.75
 
 def audience_header_texts():
     return [header for _, header in AUDIENCE_HEADERS]
@@ -171,23 +353,94 @@ def earliest_marker_index(text, markers):
 def station_site_type(station):
     return station.get("site_type", "harbor")
 
-def actions_for(station, audience):
-    site_type = station_site_type(station)
-    templates = ACTION_TEMPLATES.get(site_type, ACTION_TEMPLATES["harbor"])
-    return templates[audience]
+def normalize_risk_level(risk_level):
+    if risk_level in RISK_RANK:
+        return risk_level
+    return "elevated"
 
-def build_action_sections(station):
+def wind_risk_level(wind_kmh):
+    if wind_kmh is None:
+        return "low"
+    if wind_kmh >= WIND_HIGH_KMH:
+        return "high"
+    if wind_kmh >= WIND_ELEVATED_KMH:
+        return "elevated"
+    return "low"
+
+def wave_risk_level(wave_m):
+    if wave_m is None:
+        return None
+    if wave_m >= WAVE_HIGH_M:
+        return "high"
+    if wave_m >= WAVE_ELEVATED_M:
+        return "elevated"
+    return "low"
+
+def compute_risk_level(wind_kmh, wave_m, in_monsoon):
+    """Score live risk from wind + waves. Monsoon only fills in when wave data is missing."""
+    scores = [RISK_RANK[wind_risk_level(wind_kmh)]]
+    wave_level = wave_risk_level(wave_m)
+    if wave_level is not None:
+        scores.append(RISK_RANK[wave_level])
+    elif in_monsoon:
+        # No marine reading: seasonal seas warrant at least elevated caution
+        scores.append(RISK_RANK["elevated"])
+    return RISK_LEVELS[max(scores)]
+
+def danger_label_for(station, risk_level):
+    site_type = station_site_type(station)
+    labels = SITE_DANGER_LABELS.get(site_type, SITE_DANGER_LABELS["harbor"])
+    return labels.get(normalize_risk_level(risk_level), labels["elevated"])
+
+def fetch_wave_height_m(latitude, longitude, now_ist):
+    """Current significant wave height (m) from Open-Meteo marine; None if unavailable."""
+    try:
+        response = requests.get(
+            "https://marine-api.open-meteo.com/v1/marine",
+            params={
+                "latitude": float(latitude),
+                "longitude": float(longitude),
+                "hourly": "wave_height",
+                "timezone": "Asia/Kolkata",
+                "forecast_days": 2,
+            },
+            timeout=20,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        times = payload["hourly"]["time"]
+        heights = payload["hourly"]["wave_height"]
+        current_hour_str = now_ist.strftime("%Y-%m-%dT%H:00")
+        try:
+            idx = times.index(current_hour_str)
+        except ValueError:
+            idx = 0
+        height = heights[idx]
+        if height is None:
+            return None
+        return float(height)
+    except Exception as exc:
+        print(f"⚠️ Marine wave fetch failed: {exc}")
+        return None
+
+def actions_for(station, audience, risk_level):
+    site_type = station_site_type(station)
+    by_site = ACTION_TEMPLATES.get(site_type, ACTION_TEMPLATES["harbor"])
+    by_risk = by_site.get(normalize_risk_level(risk_level), by_site["elevated"])
+    return by_risk[audience]
+
+def build_action_sections(station, risk_level):
     lines = []
     for audience, header in AUDIENCE_HEADERS:
         lines.append(header)
-        for bullet in actions_for(station, audience):
+        for bullet in actions_for(station, audience, risk_level):
             lines.append(f"- {bullet}")
         lines.append("")
     return "\n".join(lines).rstrip()
 
-def apply_action_templates(advisory, station):
-    """Replace free-form action bullets with site-type templates."""
-    sections = build_action_sections(station)
+def apply_action_templates(advisory, station, risk_level):
+    """Replace free-form action bullets with site-type + risk templates."""
+    sections = build_action_sections(station, risk_level)
     cut_at = earliest_marker_index(
         advisory, audience_header_texts() + list(LEGACY_ACTION_MARKERS)
     )
@@ -212,20 +465,29 @@ def describe_trend(values, threshold):
 
 def build_safety_prompt(station, telemetry, now_ist):
     loc = station["location_name"]
+    risk_level = normalize_risk_level(telemetry["risk_level"])
     monsoon_block = monsoon_overlay_block(now_ist)
     monsoon_section = f"\n{monsoon_block}\n" if monsoon_block else "\n"
     monsoon_rule = (
         "- Include the monsoon alert lines exactly as shown; do not invent legal bans or fines.\n"
+        "- Do not let the monsoon banner override the boat-risk sentence or invent stormier weather than the telemetry shows.\n"
         if monsoon_block else
         "- Do not invent a monsoon ban if no monsoon alert lines are shown.\n"
     )
-    danger_label = SITE_DANGER_LABELS.get(station_site_type(station), "COASTAL CAUTION")
-    action_sections = build_action_sections(station)
+    advisory_title = RISK_ADVISORY_TITLES[risk_level]
+    danger_label = danger_label_for(station, risk_level)
+    boat_sentence = RISK_BOAT_SENTENCES[risk_level]
+    action_sections = build_action_sections(station, risk_level)
+    wave_fact = (
+        f"- Wave height: {telemetry['current_wave']:.1f} m"
+        if telemetry.get("current_wave") is not None
+        else "- Wave height: unavailable"
+    )
     return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
 
 🌊 Safety Status Update: {loc}
 {monsoon_section}
-Urgent Safety Advisory
+{advisory_title}
 
 Location: {loc}
 Current Time: {telemetry['current_time']}
@@ -235,8 +497,10 @@ Current Time: {telemetry['current_time']}
 {{2-3 sentences describing current conditions. Use these telemetry facts:
 - Pressure trend: {telemetry['pressure_trend']} (current {telemetry['current_pressure']:.1f} hPa)
 - Wind trend: {telemetry['wind_trend']} (current {telemetry['current_wind']:.1f} km/h)
+{wave_fact}
 - Tide estimate (pressure-based, approximate): {telemetry['tide_summary']}
-State whether conditions are safe or risky for small boats. Do not contradict the tide estimate above.}}
+End the conditions paragraph with this exact boat-risk sentence: {boat_sentence}
+Match the tone of the telemetry; do not invent stronger wind, waves, or urgency than the facts show.}}
 
 {action_sections}
 
@@ -246,9 +510,9 @@ Rules:
 - Replace {{placeholders}} with real content; do not leave braces in the output.
 - Use the tide estimate sentence exactly as written; never report high and low water at the same time.
 - Do not invent exact tide heights in feet or meters.
+- Use the boat-risk sentence exactly as written; do not replace it with a different safe/risky judgment.
 - Copy the audience action sections exactly as shown; do not invent, remove, or rewrite bullets.
-{monsoon_rule}- Prefer elevated caution during monsoon season or strong wind.
-- Keep the header lines exactly as shown, including the location name, current time, and danger label.
+{monsoon_rule}- Keep the header lines exactly as shown, including the advisory title, location name, current time, and danger label.
 - Use plain text only."""
 
 # --- Registry logging ---
@@ -315,13 +579,7 @@ def process_coastal_safety(station):
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     loc = station["location_name"]
     now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
-
-    if loc in cache and cache[loc].get("date") == today_str:
-        cached_advisory = cache[loc].get("advisory") or cache[loc].get("full_advisory")
-        if cached_advisory:
-            print("💰 Cost Avoided! Returning pre-computed safety advisory from cache.")
-            advisory = apply_monsoon_overlay(cached_advisory, now_ist)
-            return apply_action_templates(advisory, station)
+    in_monsoon = in_monsoon_season(now_ist)
 
     params = {
         "latitude": float(station["latitude"]),
@@ -330,7 +588,11 @@ def process_coastal_safety(station):
         "timezone": "Asia/Kolkata",
         "forecast_days": 2,
     }
-    api_response = requests.get("https://api.open-meteo.com/v1/forecast", params=params).json()
+    api_response = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params=params,
+        timeout=20,
+    ).json()
 
     times = api_response["hourly"]["time"]
     pressures = api_response["hourly"]["surface_pressure"]
@@ -344,15 +606,36 @@ def process_coastal_safety(station):
 
     target_pressures = pressures[idx:idx + 12]
     target_winds = wind_speeds[idx:idx + 12]
+    current_wind = float(target_winds[0])
+    current_wave = fetch_wave_height_m(
+        station["latitude"], station["longitude"], now_ist
+    )
+    risk_level = compute_risk_level(current_wind, current_wave, in_monsoon)
     tide_timing = compute_tide_timing(pressures, idx)
+
+    cached = cache.get(loc) or {}
+    cached_advisory = cached.get("advisory") or cached.get("full_advisory")
+    if (
+        cached.get("date") == today_str
+        and cached.get("risk_level") == risk_level
+        and cached_advisory
+    ):
+        print(
+            f"💰 Cost Avoided! Returning cached advisory "
+            f"(risk={risk_level})."
+        )
+        advisory = apply_monsoon_overlay(cached_advisory, now_ist)
+        return apply_action_templates(advisory, station, risk_level)
 
     telemetry = {
         "current_time": format_ist_time(now_ist),
         "current_pressure": target_pressures[0],
-        "current_wind": target_winds[0],
+        "current_wind": current_wind,
+        "current_wave": current_wave,
         "pressure_trend": describe_trend(target_pressures, 0.5),
         "wind_trend": describe_trend(target_winds, 2.0),
         "tide_summary": tide_timing["tide_summary"],
+        "risk_level": risk_level,
     }
 
     prompt = build_safety_prompt(station, telemetry, now_ist)
@@ -375,10 +658,11 @@ def process_coastal_safety(station):
     ai_response.raise_for_status()
     base_advisory = ai_response.json()["choices"][0]["message"]["content"]
     base_advisory = apply_monsoon_overlay(base_advisory, now_ist)
-    advisory = apply_action_templates(base_advisory, station)
+    advisory = apply_action_templates(base_advisory, station, risk_level)
 
     cache[loc] = {
         "date": today_str,
+        "risk_level": risk_level,
         "advisory": advisory,
     }
     save_json(CACHE_FILE, cache)
