@@ -315,15 +315,45 @@ def landmark_zoning_line(station, risk_level):
     landmarks = station.get("landmarks") or []
     if not isinstance(landmarks, list) or not landmarks:
         return None
-    zone = format_landmark_list(landmarks[:2])
-    if not zone:
-        return None
     risk_level = normalize_risk_level(risk_level)
+    labels = [str(item).strip() for item in landmarks if str(item).strip()]
+    if not labels:
+        return None
+
     if risk_level == "high":
-        return (
-            f"If on shore, stay land-side near the {zone} behind barriers — "
-            f"do not enter the water."
+        hazard = next(
+            (
+                item
+                for item in labels
+                if "jetty" in item.lower() or "breakwater" in item.lower()
+            ),
+            None,
         )
+        walkway = next(
+            (
+                item
+                for item in labels
+                if "walkway" in item.lower() or "sea walk" in item.lower()
+            ),
+            None,
+        )
+        if hazard and walkway:
+            return (
+                f"Stay off and clear of the {hazard}—surges can sweep pedestrians "
+                f"off structures. Stay on the land-side of the {walkway} behind barriers."
+            )
+        if hazard:
+            return (
+                f"Stay off and clear of the {hazard}—surges can sweep pedestrians "
+                f"off structures. Stay behind barriers on solid ground only."
+            )
+        zone = format_landmark_list(labels[:2])
+        return (
+            f"If on shore, stay behind barriers on the land-side of the {zone} — "
+            f"do not enter the water or climb wet structures."
+        )
+
+    zone = format_landmark_list(labels[:2])
     profile = station_coast_profile(station)
     outcome = LANDMARK_OUTCOMES.get(profile, LANDMARK_OUTCOMES["A"])
     return f"Stay within 50 m of the {zone} — {outcome}."
@@ -478,12 +508,29 @@ def impact_trend_label(values, soft_threshold, strong_threshold, rising_word, fa
         return falling_word
     return "Steady"
 
-def build_weather_line(pressure, pressures_window, wind, winds_window, wave_m):
+def wind_impact_label(wind_kmh, winds_window, gust_kmh=None):
+    """Avoid alarming trend words when absolute wind is still light."""
+    display = float(wind_kmh or 0)
+    if gust_kmh is not None:
+        display = max(display, float(gust_kmh))
+
+    # Gentle absolute speeds: report calm/light only — no "Rising fast".
+    if display < 5:
+        return f"Light ({display:.0f} km/h)"
+    if display < WIND_ELEVATED_KMH:
+        return f"Gentle ({display:.0f} km/h)"
+
+    trend = impact_trend_label(winds_window, 2.0, 8.0, "Rising", "Easing")
+    if gust_kmh is not None and float(gust_kmh) >= float(wind_kmh or 0) + 5:
+        return f"{trend} ({wind_kmh:.0f} km/h, gusts {gust_kmh:.0f})"
+    return f"{trend} ({wind_kmh:.0f} km/h)"
+
+def build_weather_line(pressure, pressures_window, wind, winds_window, wave_m, gust_kmh=None):
     pressure_label = impact_trend_label(pressures_window, 0.5, 2.0, "Rising", "Falling")
-    wind_label = impact_trend_label(winds_window, 2.0, 8.0, "Rising", "Easing")
+    wind_part = wind_impact_label(wind, winds_window, gust_kmh=gust_kmh)
     parts = [
         f"Pressure: {pressure_label} ({pressure:.0f} hPa)",
-        f"Winds: {wind_label} ({wind:.0f} km/h)",
+        f"Winds: {wind_part}",
     ]
     if wave_m is not None:
         parts.append(f"Waves: {wave_m:.1f} m")
@@ -608,7 +655,7 @@ def process_coastal_safety(station):
     params = {
         "latitude": float(station["latitude"]),
         "longitude": float(station["longitude"]),
-        "hourly": "surface_pressure,wind_speed_10m",
+        "hourly": "surface_pressure,wind_speed_10m,wind_gusts_10m",
         "timezone": "Asia/Kolkata",
         "forecast_days": 2,
     }
@@ -621,6 +668,7 @@ def process_coastal_safety(station):
     times = api_response["hourly"]["time"]
     pressures = api_response["hourly"]["surface_pressure"]
     wind_speeds = api_response["hourly"]["wind_speed_10m"]
+    wind_gusts = api_response["hourly"].get("wind_gusts_10m") or []
 
     current_hour_str = now_ist.strftime("%Y-%m-%dT%H:00")
     try:
@@ -631,6 +679,9 @@ def process_coastal_safety(station):
     target_pressures = pressures[idx:idx + 12]
     target_winds = wind_speeds[idx:idx + 12]
     current_wind = float(target_winds[0])
+    current_gust = None
+    if wind_gusts and idx < len(wind_gusts) and wind_gusts[idx] is not None:
+        current_gust = float(wind_gusts[idx])
     current_wave = fetch_wave_height_m(
         station["latitude"], station["longitude"], now_ist
     )
@@ -664,6 +715,7 @@ def process_coastal_safety(station):
             current_wind,
             target_winds,
             current_wave,
+            gust_kmh=current_gust,
         ),
         "tide_summary": tide_timing["tide_summary"],
         "risk_level": risk_level,
