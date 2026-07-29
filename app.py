@@ -68,220 +68,185 @@ def apply_monsoon_overlay(advisory, now_ist):
         return f"{header}\n\n{block}\n\n{rest}"
     return f"{header}\n\n{block}"
 
-# Audience actions by site_type and live risk_level (low / elevated / high)
+# Coast profiles (Gemini A/B/C). site_type still drives danger labels.
+# Bullets: verb first + numeric boundary + outcome.
 ACTION_TEMPLATES = {
-    "harbor": {
+    # A — shared commercial / high-activity hubs (Malpe-class)
+    "A": {
         "low": {
             "recreational": [
-                "Swim only in marked zones and watch children near the waterline.",
-                "Stay clear of working boats and slipways.",
-                "Leave the water if red flags go up or patrols advise.",
+                "Swim only inside marked zones within 50 m of the lifeguard line. Outside that strip, working boats create propeller hazard.",
+                "Keep children within arm's reach inside the swim zone. Fast craft wake can knock toddlers off their feet.",
+                "Stay clear of slipways within 30 m of launching craft. Propellers and hull swing can cause crush injuries.",
             ],
             "operators": [
-                "Run recreational launches only in calm, marked waters.",
-                "Brief passengers on life jackets before departure.",
-                "Pause operations if wind or swell picks up.",
+                "Keep jet skis and banana boats outside the swim zone by at least 50 m. Overlap with families creates collision risk.",
+                "Hold tourist boats within the marked lane past the jetty. Cutting inside that lane risks propeller strikes on waders.",
+                "Pause launches if patrols raise red flags within 100 m of the beach. Continuing ops then risks fine and injury claims.",
             ],
             "fishermen": [
-                "Check harbor mouth conditions before leaving the basin.",
-                "Carry life jackets and keep VHF or phone contact.",
-                "Return early if wind or swell builds.",
+                "Exit through the marked harbor channel within 100 m of the jetty tip. Cutting across swim water risks collision with rentals.",
+                "Carry life jackets and keep phone or VHF contact within 30 minutes of departure. Delay reporting slows rescue.",
+                "Return inside the basin if wind builds above comfort. Open approaches amplify swell against the breakwater.",
             ],
         },
         "elevated": {
             "recreational": [
-                "Stay behind shoreline barricades when red flags are shown.",
-                "Avoid swimming near the river mouth or breakwater.",
-                "Keep children on upper dry walkways away from surge.",
+                "Stay behind barricades and red flags within 50 m of the waterline. Shorebreak can slam you into fencing.",
+                "Avoid the river mouth and breakwater within 100 m. Overlapping boat traffic and surge create knockdown risk.",
+                "Keep children on upper walkways at least 30 m from surge. Fast craft wake and shorebreak can sweep them seaward.",
             ],
             "operators": [
-                "Limit recreational launches; prefer sheltered water only.",
-                "Keep jet skis and rental craft close to shore.",
-                "Do not operate near the breakwater in building swell.",
+                "Limit launches to sheltered water within 100 m of the basin entrance. Building swell outside that line flips small craft.",
+                "Keep rental craft outside family zones by at least 50 m. Propeller hazard rises when crowds compress near the jetty.",
+                "Avoid operating within 100 m of the breakwater in rising swell. Reflected waves can throw riders into rock or concrete.",
             ],
             "fishermen": [
-                "Favor short trips inside or just outside the harbor.",
-                "Avoid the river mouth if swell is building.",
-                "Secure gear before peak tide and rising wind.",
+                "Favor trips inside or within 200 m of the harbor mouth. Beyond that, commercial traffic and swell stack risk.",
+                "Avoid the river mouth within 150 m if swell is building. Cross-currents can pin small craft against the jetty.",
+                "Secure gear before peak tide within 1 hour of high water. Loose nets and crates become deck hazards in surge.",
             ],
         },
         "high": {
             "recreational": [
-                "Stay behind shoreline barricades and red-flag markers.",
-                "Do not enter the water for swimming, wading, or photos.",
-                "Keep children on upper dry walkways away from breaking waves.",
+                "Stay behind barricades and red flags within 50 m of the waterline. Breaking waves can cause spinal and head injuries on concrete.",
+                "Avoid all water entry within 100 m of the shoreline. Shorebreak and boat traffic make swimming a fatal risk.",
+                "Keep children on upper dry walkways at least 30 m from surge. Sudden wash-up can pull them under fencing.",
             ],
             "operators": [
-                "Suspend recreational water sports and beach boat launches.",
-                "Keep jet skis, banana boats, and rental craft grounded.",
-                "Do not bring equipment near the shore during peak high tide.",
+                "Suspend all recreational launches within 200 m of the beach. Continuing ops risks passenger injury and enforcement action.",
+                "Ground jet skis, banana boats, and rentals at least 50 m inland of the high-water mark. Equipment near shore becomes projectile hazard.",
+                "Keep commercial craft inside the protected basin within the jetty line. Open approaches are propeller and broach zones.",
             ],
             "fishermen": [
-                "Remain docked inside the protected harbor.",
-                "Do not launch from shore during peak high tide.",
-                "Avoid the river mouth and breakwater until water eases.",
+                "Remain docked inside the protected harbor within the breakwater. Leaving now risks capsize at the mouth.",
+                "Avoid shore launches within 100 m of the beach. Undercurrents and shorebreak can flip non-motorized craft.",
+                "Stay clear of the river mouth and breakwater within 200 m. Peak tide surge there can pin hulls against concrete.",
             ],
         },
     },
-    "backwater": {
+    # B — rocky terrain, cliffs, heavy rips (Kapu / Someshwara-class; ready for new stations)
+    "B": {
         "low": {
             "recreational": [
-                "Stay on marked paths and watch for soft mud at the edges.",
-                "Supervise children near channel banks.",
-                "Follow local patrol instructions if posted.",
+                "Stay on marked paths at least 10 m back from cliff edges. Wet rock causes falls onto shorebreak.",
+                "Keep within 50 m of the lifeguard or lighthouse approach when walking the foreshore. Hidden rips run along rock ridges.",
+                "Avoid selfie spots within 5 m of drop-offs. Sudden shorebreak can knock you onto rocks and cause spinal injury.",
             ],
             "operators": [
-                "Run ferries and joyrides only in sheltered channels.",
-                "Brief passengers before boarding.",
-                "Delay trips if rain squalls or strong current appear.",
+                "Hold guided walks on marked routes within 20 m of signed paths. Shortcuts across wet rock cause slip injuries.",
+                "Keep rental gear off rock shelves within 30 m of surge. Equipment becomes a slide hazard when wet.",
+                "Abort tours if red flags rise within 100 m of the viewing point. Continuing then exposes guests to cliff fall risk.",
             ],
             "fishermen": [
-                "Work sheltered channels; watch current at bends.",
-                "Keep life jackets aboard small craft.",
-                "Avoid the sea mouth if swell is visible outside.",
+                "Cast only from signed shore points at least 15 m from cliff faces. Rock spray zones knock anglers into surge.",
+                "Wear non-slip footwear within 20 m of wet rock. Algae film causes falls into shorebreak.",
+                "Exit if a rip pulls within 50 m of your stance. Fighting the current toward rocks risks drowning.",
             ],
         },
         "elevated": {
             "recreational": [
-                "Avoid sandbars and channel edges during rising water.",
-                "Stay off mud flats that can flood on the incoming tide.",
-                "Follow local patrol instructions and red-flag warnings.",
+                "Stay at least 20 m back from cliff edges and rock ridges. Spray-slick surfaces cause fatal falls.",
+                "Avoid rock pools within 30 m of open shorebreak. Sudden sets can pin you against basalt.",
+                "Keep children within arm's reach on the upper path, at least 50 m from the waterline. Rips along ridges sweep fast.",
             ],
             "operators": [
-                "Reduce ferry or joyride runs in narrow channels.",
-                "Keep rental craft in the most sheltered stretches.",
-                "Keep passengers away from the sea mouth.",
+                "Limit groups to marked overlooks at least 25 m from drop-offs. Crowd pressure near edges causes falls.",
+                "Ground water toys at least 50 m inland of rock shelves. Surf can throw gear and bystanders onto stone.",
+                "Avoid launching within 100 m of rock points. Reflected swell flips small craft onto reefs.",
             ],
             "fishermen": [
-                "Avoid crossing the backwater mouth in building current.",
-                "Keep small boats ready to tie up in sheltered channels.",
-                "Watch for strong currents where the backwater meets the sea.",
+                "Avoid casting within 30 m of rock points in rising swell. Shorebreak can sweep you off the ledge.",
+                "Keep boats at least 100 m off rock ridges. Hidden reefs and rips cause grounding and capsize.",
+                "Secure gear before peak sets within 1 hour of high water. Loose tackle becomes a trip hazard on wet rock.",
             ],
         },
         "high": {
             "recreational": [
-                "Avoid sandbars and channel edges during rising water.",
-                "Stay off mud flats that can flood quickly on incoming tide.",
-                "Follow local patrol instructions and red-flag warnings.",
+                "Stay at least 50 m back from cliffs and rock ridges. Shorebreak and spray make edges unsurvivable if you fall.",
+                "Avoid all rock and water entry within 100 m of the shoreline. Rips along formations pull swimmers into caves and reefs.",
+                "Keep to upper paths near the lighthouse or signed ridge line only. Selfie ledges are spinal-injury zones in this surf.",
             ],
             "operators": [
-                "Suspend ferry or joyride operations in narrow channels.",
-                "Ground all rental craft until water levels ease.",
-                "Keep passengers away from estuary entry points.",
+                "Suspend all cliff and rock tours within 100 m of the foreshore. Fall and surge risk exceeds guide control.",
+                "Ground all craft and gear at least 100 m inland. Equipment near rock shelves becomes projectile hazard.",
+                "Hold guests behind signed barriers only. Crossing within 50 m of drop-offs risks fatal falls.",
             ],
             "fishermen": [
-                "Do not cross the backwater mouth during peak high tide.",
-                "Keep small boats tied inside sheltered channels.",
-                "Watch for strong currents where the backwater meets the sea.",
+                "Remain off rock ledges and point launches within 100 m of surge. One set can throw you onto basalt.",
+                "Keep vessels at least 200 m off rock ridges. Reefs and rips here cause rapid grounding.",
+                "Shelter in harbor or inland berths only. Open rocky approaches are capsize zones at this energy.",
             ],
         },
     },
-    "estuary": {
+    # C — estuaries / river-sea mouths / surf confluences
+    "C": {
         "low": {
             "recreational": [
-                "Use designated walkways along the estuary banks.",
-                "Do not wade into unmarked channels.",
-                "Supervise children near the waterline.",
+                "Keep children within arm's reach inside marked bank paths. Soft mud within 10 m of the edge hides drop-offs.",
+                "Stay at least 20 m back from unmarked channel edges. Tidal cuts deepen fast and trap waders.",
+                "Avoid sandbars within 50 m of the active mouth. Bars shift and create sudden holes underfoot.",
             ],
             "operators": [
-                "Run small-craft tours only in calm, inland stretches.",
-                "Brief passengers and check life jackets.",
-                "Turn back if current or wind strengthens.",
+                "Run tours only on inland stretches at least 200 m from the sea mouth. Mouth currents flip small passenger craft.",
+                "Hold passengers inside the boat within 5 m of boarding points. Slippery mangrove roots cause fall injuries.",
+                "Abort if current visibly accelerates within 100 m of the confluence. Continuing then risks broach on bars.",
             ],
             "fishermen": [
-                "Work inland channels first; check the mouth before crossing.",
-                "Secure nets if the tide is rising quickly.",
-                "Carry life jackets on every trip.",
+                "Work sheltered channels at least 150 m inland of the mouth. Confluence rips foul traditional shore nets.",
+                "Carry life jackets within reach on every trip. Cold shock after a fall into the mouth slows self-rescue.",
+                "Check the bar within 50 m before crossing. Unseen cuts can ground and roll small craft.",
             ],
         },
         "elevated": {
             "recreational": [
-                "Stay away from estuary banks during higher water.",
-                "Do not wade into channels or sand spits.",
-                "Use designated walkways only.",
+                "Stay at least 30 m back from estuary banks at higher water. Undercut edges collapse without warning.",
+                "Avoid wading within 50 m of channels or sand spits. Drop-offs and tidal jets sweep children seaward.",
+                "Keep to designated walkways only, at least 20 m from the mangrove edge when surge is up. Soft banks give way.",
             ],
             "operators": [
-                "Limit small craft tours; avoid the river mouth.",
-                "Keep passenger boats in sheltered inland water.",
-                "Monitor district advisories before extending trips.",
+                "Limit tours to sheltered inland water at least 300 m from the mouth. Bars and opposing currents broach hulls.",
+                "Keep passenger boats off the confluence within 200 m. Rapid tidal jets cause capsizes.",
+                "Delay new trips if district flags rise within the estuary zone. Operating then risks passenger injury.",
             ],
             "fishermen": [
-                "Avoid the estuary mouth if current is strong.",
-                "Secure nets and canoes in sheltered inland channels.",
-                "Watch for rip currents where river flow meets the sea.",
+                "Avoid the mouth within 200 m in strong current. Outflow against swell pins nets and canoes.",
+                "Secure nets and canoes in inland channels at least 150 m from the sea. Mouth surge shreds shore sets.",
+                "Watch for rips within 100 m of where river meets sea. Crossing that line risks sweep-out.",
             ],
         },
         "high": {
             "recreational": [
-                "Stay away from estuary banks during high water.",
-                "Do not wade into channels or sand spits.",
-                "Use designated walkways only.",
+                "Stay at least 50 m back from estuary banks. High water undercuts paths and drops walkers into current.",
+                "Avoid all wading within 100 m of channels or sand spits. Violent bar shifts create drown-out holes.",
+                "Keep to designated walkways only, at least 30 m from the mangrove or tree line. Soft edges fail in surge.",
             ],
             "operators": [
-                "Suspend small craft tours through the estuary.",
-                "Keep all passenger boats away from the river mouth.",
-                "Monitor district advisories before resuming service.",
+                "Suspend all estuary tours within 500 m of the mouth. Sandbar and tidal jet risk exceeds small-craft limits.",
+                "Keep passenger boats inland at least 300 m from the confluence. Mouth crossings are capsize zones.",
+                "Hold service until district advisories clear. Restarting early risks passenger and hull loss.",
             ],
             "fishermen": [
-                "Do not attempt to cross the estuary mouth at peak tide.",
-                "Secure nets and canoes in sheltered inland channels.",
-                "Watch for rip currents where river flow meets the sea.",
+                "Avoid the estuary mouth within 300 m at peak tide. Opposing current and swell can roll small craft.",
+                "Secure nets and canoes in inland channels at least 200 m from the sea. Shore casting at the mouth is a sweep-out trap.",
+                "Stay off sandbars within 150 m of the confluence. Bars collapse and create fatal drop-offs underfoot.",
             ],
         },
     },
-    "port": {
-        "low": {
-            "recreational": [
-                "Stay off restricted quay and breakwater areas.",
-                "Do not swim near shipping channels or dock walls.",
-                "Observe port security and safety signage.",
-            ],
-            "operators": [
-                "Run passenger craft only inside protected basins when seas are calm.",
-                "Brief crews on traffic separation and life jackets.",
-                "Follow harbor master instructions.",
-            ],
-            "fishermen": [
-                "Check wind and swell before leaving the basin.",
-                "Keep trips short and stay near protected waters if unsure.",
-                "Secure gear before peak tide.",
-            ],
-        },
-        "elevated": {
-            "recreational": [
-                "Stay off port breakwaters and restricted quay areas.",
-                "Do not swim near shipping channels or dock walls.",
-                "Observe port security and safety signage.",
-            ],
-            "operators": [
-                "Limit non-essential port transits for small passenger craft.",
-                "Prefer protected basins over open approaches.",
-                "Follow harbor master instructions.",
-            ],
-            "fishermen": [
-                "Stay close to protected harbor waters in small craft.",
-                "Postpone open-coast legs if swell is building.",
-                "Secure gear before peak high water.",
-            ],
-        },
-        "high": {
-            "recreational": [
-                "Stay off port breakwaters and restricted quay areas.",
-                "Do not swim near shipping channels or dock walls.",
-                "Observe port security and safety signage.",
-            ],
-            "operators": [
-                "Delay non-essential port transits for small passenger craft.",
-                "Keep commercial launches inside protected basins.",
-                "Follow harbor master instructions.",
-            ],
-            "fishermen": [
-                "Remain alongside port docks until tide and wind ease.",
-                "Do not leave protected harbor waters in small craft.",
-                "Secure gear before peak high water.",
-            ],
-        },
-    },
+}
+
+# Fallback when coast_profile is missing
+SITE_TYPE_TO_COAST_PROFILE = {
+    "harbor": "A",
+    "port": "A",
+    "backwater": "C",
+    "estuary": "C",
+}
+
+LANDMARK_OUTCOMES = {
+    "A": "Outside that strip, jet skis and tourist boats create propeller and collision risk.",
+    "B": "Outside that strip, rock faces and rip currents create fall and sweep-out risk.",
+    "C": "Outside that strip, estuary currents and shifting sandbars create drop-off and sweep-out risk.",
 }
 
 AUDIENCE_HEADERS = (
@@ -352,6 +317,35 @@ def earliest_marker_index(text, markers):
 
 def station_site_type(station):
     return station.get("site_type", "harbor")
+
+def station_coast_profile(station):
+    """Return A/B/C coast profile; fall back from site_type when unset."""
+    raw = str(station.get("coast_profile") or "").strip().upper()
+    if raw in ACTION_TEMPLATES:
+        return raw
+    return SITE_TYPE_TO_COAST_PROFILE.get(station_site_type(station), "A")
+
+def format_landmark_list(landmarks):
+    landmarks = [str(item).strip() for item in landmarks if str(item).strip()]
+    if not landmarks:
+        return ""
+    if len(landmarks) == 1:
+        return landmarks[0]
+    if len(landmarks) == 2:
+        return f"{landmarks[0]} and {landmarks[1]}"
+    return ", ".join(landmarks[:-1]) + f", and {landmarks[-1]}"
+
+def landmark_zoning_line(station):
+    """Optional recreational bullet: numeric stay-near landmarks + profile outcome."""
+    landmarks = station.get("landmarks") or []
+    if not isinstance(landmarks, list) or not landmarks:
+        return None
+    zone = format_landmark_list(landmarks)
+    if not zone:
+        return None
+    profile = station_coast_profile(station)
+    outcome = LANDMARK_OUTCOMES.get(profile, LANDMARK_OUTCOMES["A"])
+    return f"Keep within 50 m of the {zone}. {outcome}"
 
 def normalize_risk_level(risk_level):
     if risk_level in RISK_RANK:
@@ -424,10 +418,15 @@ def fetch_wave_height_m(latitude, longitude, now_ist):
         return None
 
 def actions_for(station, audience, risk_level):
-    site_type = station_site_type(station)
-    by_site = ACTION_TEMPLATES.get(site_type, ACTION_TEMPLATES["harbor"])
-    by_risk = by_site.get(normalize_risk_level(risk_level), by_site["elevated"])
-    return by_risk[audience]
+    profile = station_coast_profile(station)
+    by_profile = ACTION_TEMPLATES.get(profile, ACTION_TEMPLATES["A"])
+    by_risk = by_profile.get(normalize_risk_level(risk_level), by_profile["elevated"])
+    bullets = list(by_risk[audience])
+    if audience == "recreational":
+        zoning = landmark_zoning_line(station)
+        if zoning:
+            bullets.insert(0, zoning)
+    return bullets
 
 def build_action_sections(station, risk_level):
     lines = []
@@ -439,7 +438,7 @@ def build_action_sections(station, risk_level):
     return "\n".join(lines).rstrip()
 
 def apply_action_templates(advisory, station, risk_level):
-    """Replace free-form action bullets with site-type + risk templates."""
+    """Replace free-form action bullets with coast-profile + risk templates."""
     sections = build_action_sections(station, risk_level)
     cut_at = earliest_marker_index(
         advisory, audience_header_texts() + list(LEGACY_ACTION_MARKERS)
@@ -713,6 +712,8 @@ def voice_ivr_handler():
         "latitude": 13.3486,
         "longitude": 74.6961,
         "site_type": "harbor",
+        "coast_profile": "A",
+        "landmarks": ["concrete jetty", "public Sea Walkway", "lifeguard watchtower"],
     }
     update_station_registry("Voice Phone Call Inbound Connection", default_station)
 
