@@ -676,6 +676,10 @@ def incoming_message_handler():
         incoming_text = request.values.get("Body", "").strip()
         num_media = int(request.values.get("NumMedia", 0))
         media_url = request.values.get("MediaUrl0", "")
+        print(
+            f"📩 WhatsApp/SMS Body={incoming_text!r} "
+            f"NumMedia={num_media}"
+        )
 
         user_query = incoming_text
         if num_media > 0 and media_url:
@@ -689,10 +693,13 @@ def incoming_message_handler():
                 "⚓ *Karnataka Coastal Safety Agent*\n\n"
                 "Please state your location to check safety windows (e.g., Malpe, Karwar)."
             )
-            return str(twiml_resp)
+            return Response(str(twiml_resp), mimetype="text/xml")
 
         update_station_registry(user_query, station)
         advisory = process_coastal_safety(station)
+        # WhatsApp freeform body limit is 1600 characters.
+        if len(advisory) > 1500:
+            print(f"⚠️ Advisory length {len(advisory)} may exceed WhatsApp limit")
         twiml_resp.message(advisory)
 
     except Exception:
@@ -701,7 +708,7 @@ def incoming_message_handler():
             "⚠️ Safety database is syncing. Please check local shoreline water indicators."
         )
 
-    return str(twiml_resp)
+    return Response(str(twiml_resp), mimetype="text/xml")
 
 @app.route("/webhook/voice", methods=["POST"])
 def voice_ivr_handler():
