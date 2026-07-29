@@ -75,29 +75,29 @@ ACTION_TEMPLATES = {
         "low": {
             "recreational": [
                 "Swim only within 50 m of the lifeguard line — boats outside create propeller hazard.",
-                "Keep kids within arm's reach in the swim zone — craft wake can knock them down.",
+                "Keep kids within arm's reach in the swim zone — boat wash can knock them down.",
             ],
             "operators": [
-                "Keep jet skis/banana boats ≥50 m outside the swim zone — collision risk with families.",
-                "Pause launches if red flags rise within 100 m — continuing risks injury and fines.",
+                "Keep jet skis and banana boats ≥50 m outside the swim zone — collision risk with families.",
+                "Pause boat rides if red flags rise within 100 m — continuing risks injury and fines.",
             ],
             "fishermen": [
-                "Exit via the marked channel within 100 m of the jetty — cutting swim water risks collision.",
-                "Return to basin if wind builds — open approaches amplify breakwater swell.",
+                "Leave through the marked harbor channel within 100 m of the jetty — cutting across swimmers risks collision.",
+                "Return inside the harbor if wind builds — open water outside the walls gets rough fast.",
             ],
         },
         "elevated": {
             "recreational": [
                 "Stay behind red flags within 50 m of the waterline — shorebreak can slam you into fencing.",
-                "Keep kids on upper walkways ≥30 m from surge — wake and shorebreak sweep seaward.",
+                "Keep kids on upper walkways ≥30 m from surge — boat wash and shorebreak sweep seaward.",
             ],
             "operators": [
-                "Limit launches to within 100 m of the basin entrance — swell outside flips small craft.",
-                "Keep rentals ≥50 m from family zones — propeller hazard rises near the jetty.",
+                "Limit boat rides to within 100 m of the harbor entrance — swell outside flips small craft.",
+                "Keep boats and ride equipment ≥50 m from family beach zones — propeller hazard near the jetty.",
             ],
             "fishermen": [
-                "Stay within 200 m of the harbor mouth — traffic and swell stack beyond.",
-                "Avoid the river mouth within 150 m in building swell — currents pin craft to the jetty.",
+                "Stay within 200 m of the harbor opening — traffic and swell stack beyond.",
+                "Avoid the kodi (where river meets sea) within 150 m in building swell — currents pin boats to the jetty.",
             ],
         },
         "high": {
@@ -106,12 +106,12 @@ ACTION_TEMPLATES = {
                 "If on the beach, stay behind red flags ≥50 m from the waterline — breaking waves cause head/spinal injury.",
             ],
             "operators": [
-                "Suspend launches within 200 m of the beach — passenger injury and enforcement risk.",
-                "Ground rentals ≥50 m inland of high water — gear near shore becomes projectile hazard.",
+                "Stop all boat rides and jet ski trips within 200 m of the beach — injury and fine risk.",
+                "Keep all boats and ride equipment ≥50 m inland from the wet sand — gear near water becomes dangerous in surge.",
             ],
             "fishermen": [
-                "Remain docked inside the breakwater — leaving now risks capsize at the mouth.",
-                "Stay clear of river mouth/breakwater within 200 m — peak surge pins hulls to concrete.",
+                "Keep boats tied inside the protected harbor walls — leaving now risks capsize at the harbor opening.",
+                "Stay clear of the kodi (river–sea junction) and harbor wall ends within 200 m — surge can smash boats into concrete.",
             ],
         },
     },
@@ -124,7 +124,7 @@ ACTION_TEMPLATES = {
             ],
             "operators": [
                 "Keep tours on marked routes within 20 m of signed paths — wet rock shortcuts cause slips.",
-                "Abort if red flags rise within 100 m — continuing exposes guests to cliff falls.",
+                "Stop tours if red flags rise within 100 m — continuing exposes guests to cliff falls.",
             ],
             "fishermen": [
                 "Cast ≥15 m from cliff faces — spray zones knock anglers into surge.",
@@ -138,7 +138,7 @@ ACTION_TEMPLATES = {
             ],
             "operators": [
                 "Limit groups to overlooks ≥25 m from drop-offs — crowd pressure causes falls.",
-                "Avoid launches within 100 m of rock points — reflected swell flips craft onto reefs.",
+                "Avoid boat rides within 100 m of rock points — rebound swell flips craft onto reefs.",
             ],
             "fishermen": [
                 "Avoid casting within 30 m of rock points in rising swell — shorebreak sweeps ledges.",
@@ -151,12 +151,12 @@ ACTION_TEMPLATES = {
                 "If on shore, stay ≥50 m from cliffs and ridges — falls onto shorebreak are unsurvivable.",
             ],
             "operators": [
-                "Suspend cliff/rock tours within 100 m of foreshore — fall/surge exceeds guide control.",
+                "Stop cliff and rock tours within 100 m of the shore — fall/surge exceeds guide control.",
                 "Hold guests behind barriers only — within 50 m of drop-offs risks fatal falls.",
             ],
             "fishermen": [
                 "Stay off rock ledges within 100 m of surge — one set can throw you onto basalt.",
-                "Keep vessels ≥200 m off rock ridges — reefs/rips cause rapid grounding.",
+                "Keep boats ≥200 m off rock ridges — reefs/rips cause rapid grounding.",
             ],
         },
     },
@@ -168,12 +168,12 @@ ACTION_TEMPLATES = {
                 "Stay ≥20 m from unmarked channel edges — tidal cuts trap waders.",
             ],
             "operators": [
-                "Run tours ≥200 m inland of the sea mouth — mouth currents flip small craft.",
-                "Abort if current accelerates within 100 m of the confluence — broach risk on bars.",
+                "Run boat rides ≥200 m inland of the kodi (where river meets sea) — mouth currents flip small craft.",
+                "Stop trips if current accelerates within 100 m of the kodi — boats can broach on sandbars.",
             ],
             "fishermen": [
-                "Work channels ≥150 m inland of the mouth — confluence rips foul shore nets.",
-                "Check the bar within 50 m before crossing — unseen cuts ground and roll craft.",
+                "Work channels ≥150 m inland of the kodi — confluence rips foul shore nets.",
+                "Check the sandbar within 50 m before crossing — unseen cuts ground and roll craft.",
             ],
         },
         "elevated": {
@@ -182,12 +182,12 @@ ACTION_TEMPLATES = {
                 "No wading within 50 m of channels/sand spits — tidal jets sweep kids seaward.",
             ],
             "operators": [
-                "Limit tours to ≥300 m inland of the mouth — bars and opposing currents broach hulls.",
-                "Keep boats off the confluence within 200 m — rapid jets cause capsizes.",
+                "Limit boat rides to ≥300 m inland of the kodi — bars and opposing currents broach hulls.",
+                "Keep boats off the kodi within 200 m — rapid jets cause capsizes.",
             ],
             "fishermen": [
-                "Avoid the mouth within 200 m in strong current — outflow pins nets and canoes.",
-                "Secure gear ≥150 m inland of the sea — mouth surge shreds shore sets.",
+                "Avoid the kodi within 200 m in strong current — outflow pins nets and canoes.",
+                "Secure gear ≥150 m inland of the sea — mouth surge shreds shore nets.",
             ],
         },
         "high": {
@@ -196,12 +196,12 @@ ACTION_TEMPLATES = {
                 "If on shore, stay ≥50 m from estuary banks — high water drops walkers into current.",
             ],
             "operators": [
-                "Suspend tours within 500 m of the mouth — sandbar/tidal jet exceeds small-craft limits.",
-                "Keep boats ≥300 m inland of the confluence — mouth crossings are capsize zones.",
+                "Stop all boat rides within 500 m of the kodi — sandbar and tidal jet exceed small-boat limits.",
+                "Keep boats ≥300 m inland of the kodi — crossing the mouth is a capsize zone.",
             ],
             "fishermen": [
-                "Avoid the mouth within 300 m at peak tide — current vs swell can roll craft.",
-                "Stay off sandbars within 150 m of the confluence — bars collapse into drop-offs.",
+                "Avoid the kodi within 300 m at peak tide — current vs swell can roll craft.",
+                "Stay off sandbars within 150 m of the kodi — bars collapse into drop-offs.",
             ],
         },
     },
@@ -509,31 +509,82 @@ def impact_trend_label(values, soft_threshold, strong_threshold, rising_word, fa
     return "Steady"
 
 def wind_impact_label(wind_kmh, winds_window, gust_kmh=None):
-    """Avoid alarming trend words when absolute wind is still light."""
-    display = float(wind_kmh or 0)
-    if gust_kmh is not None:
-        display = max(display, float(gust_kmh))
+    """Plain-language wind for the public — no km/h or 'gusts N' jargon."""
+    mean = float(wind_kmh or 0)
+    gust = float(gust_kmh) if gust_kmh is not None else None
+    gusty = (
+        gust is not None
+        and gust >= mean + 5
+        and gust >= WIND_ELEVATED_KMH
+    )
 
-    # Gentle absolute speeds: report calm/light only — no "Rising fast".
-    if display < 5:
-        return f"Light ({display:.0f} km/h)"
-    if display < WIND_ELEVATED_KMH:
-        return f"Gentle ({display:.0f} km/h)"
+    # Light mean + punchy gusts: the burst is the hazard, not a fake trend.
+    if mean < WIND_ELEVATED_KMH and gusty:
+        return "sudden strong wind bursts"
+
+    if mean < 5:
+        return "light"
+    if mean < WIND_ELEVATED_KMH:
+        return "gentle"
 
     trend = impact_trend_label(winds_window, 2.0, 8.0, "Rising", "Easing")
-    if gust_kmh is not None and float(gust_kmh) >= float(wind_kmh or 0) + 5:
-        return f"{trend} ({wind_kmh:.0f} km/h, gusts {gust_kmh:.0f})"
-    return f"{trend} ({wind_kmh:.0f} km/h)"
+    if gusty:
+        if "Rising" in trend:
+            return "strong, building, with sudden bursts"
+        if "Easing" in trend:
+            return "still strong with sudden bursts"
+        return "strong with sudden bursts"
+    if trend == "Rising fast":
+        return "strong and building fast"
+    if trend == "Rising":
+        return "strong and building"
+    if trend == "Easing fast":
+        return "strong but easing"
+    if trend == "Easing":
+        return "strong but easing"
+    return "strong"
 
-def build_weather_line(pressure, pressures_window, wind, winds_window, wave_m, gust_kmh=None):
-    pressure_label = impact_trend_label(pressures_window, 0.5, 2.0, "Rising", "Falling")
-    wind_part = wind_impact_label(wind, winds_window, gust_kmh=gust_kmh)
+def weather_condition_label(pressures_window, wave_m=None, risk_level=None):
+    """Public weather phrase — no hPa / meteorologist jargon."""
+    pressure_trend = impact_trend_label(
+        pressures_window, 0.5, 2.0, "Rising", "Falling"
+    )
+    rough_sea = wave_m is not None and wave_m >= WAVE_HIGH_M
+    choppy_sea = wave_m is not None and wave_m >= WAVE_ELEVATED_M
+
+    if pressure_trend == "Falling fast" or (
+        pressure_trend == "Falling" and rough_sea
+    ):
+        return "Storm conditions developing"
+    if pressure_trend == "Falling" or rough_sea:
+        return "Rough conditions building"
+    if choppy_sea or risk_level == "elevated":
+        return "Caution — seas unsettled"
+    if "Rising" in pressure_trend:
+        return "Conditions easing"
+    return "Conditions relatively calm"
+
+def sea_condition_label(wave_m):
+    if wave_m is None:
+        return None
+    if wave_m >= WAVE_HIGH_M:
+        return "rough"
+    if wave_m >= WAVE_ELEVATED_M:
+        return "choppy"
+    return "moderate"
+
+def build_weather_line(
+    pressure, pressures_window, wind, winds_window, wave_m, gust_kmh=None, risk_level=None
+):
+    # pressure arg kept for call-site compatibility; not shown to the public.
+    _ = pressure
     parts = [
-        f"Pressure: {pressure_label} ({pressure:.0f} hPa)",
-        f"Winds: {wind_part}",
+        f"Weather: {weather_condition_label(pressures_window, wave_m, risk_level)}",
+        f"Wind: {wind_impact_label(wind, winds_window, gust_kmh=gust_kmh)}",
     ]
-    if wave_m is not None:
-        parts.append(f"Waves: {wave_m:.1f} m")
+    sea = sea_condition_label(wave_m)
+    if sea:
+        parts.append(f"Sea: {sea}")
     return " | ".join(parts)
 
 def build_safety_prompt(station, telemetry, now_ist):
@@ -716,6 +767,7 @@ def process_coastal_safety(station):
             target_winds,
             current_wave,
             gust_kmh=current_gust,
+            risk_level=risk_level,
         ),
         "tide_summary": tide_timing["tide_summary"],
         "risk_level": risk_level,
