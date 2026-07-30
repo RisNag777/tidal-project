@@ -1,9 +1,9 @@
 # Coastal Safety Agents
 
-Two regional WhatsApp / SMS / voice coastal safety apps share common helpers:
+One Flask service (`app.py`, port 5000) routes WhatsApp / SMS / voice by **station name** to Karnataka or PNW pipelines. Shared helpers live in `coastal_common/`.
 
-| Path | Region | Tide source | LLM |
-|------|--------|-------------|-----|
+| Path | Region | Tide source | LLM / STT |
+|------|--------|-------------|-----------|
 | [`karnataka/`](karnataka/) | Karnataka, India | Open-Meteo `sea_level_height_msl` | Sarvam |
 | [`pnw/`](pnw/) | Pacific Northwest, US | NOAA CO-OPS hilo | OpenAI |
 | [`coastal_common/`](coastal_common/) | Shared | Open-Meteo wind/waves, risk scoring, clocks, WhatsApp helpers | — |
@@ -16,29 +16,29 @@ source tidal_env/bin/activate   # Windows: tidal_env\Scripts\activate
 pip install -r requirements.txt
 ```
 
-`.env` at repo root:
+`.env` at repo root (both region keys needed for full coverage):
 
 ```env
 TWILIO_ACCOUNT_SID=...
 TWILIO_AUTH_TOKEN=...
-SARVAM_API_KEY=...          # Karnataka
-OPENAI_API_KEY=...          # PNW
+SARVAM_API_KEY=...          # Karnataka advisories + Kannada/Tulu voice notes
+OPENAI_API_KEY=...          # PNW advisories + Whisper fallback
 OPENAI_CHAT_MODEL=gpt-4o-mini
 ```
 
 ```bash
-# Karnataka (port 5000) — systemd still uses root app.py
+# Production entrypoint (systemd): routes Malpe/Karwar/... vs Astoria/Seattle/...
 python app.py
-# or: python karnataka/app.py
 
-# PNW (port 5001)
-python pnw/app.py
+# Optional standalone region apps (local testing)
+python karnataka/app.py   # port 5000, Karnataka only
+python pnw/app.py         # port 5001, PNW only
 ```
 
 Precompute Karnataka caches: `python broadbase.py`
 
-## Deploy (Karnataka droplet)
+## Deploy (droplet)
 
-Working directory remains `/root/tidal-project`. `ExecStart` still runs `/root/tidal-project/app.py` (thin launcher into `karnataka/`).
+Working directory: `/root/tidal-project`. One systemd unit runs `/root/tidal-project/app.py` on port **5000**. Twilio webhooks point at that host; station name selects the region.
 
 See [`karnataka/README.md`](karnataka/README.md) and [`pnw/README.md`](pnw/README.md) for region-specific notes.
