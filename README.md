@@ -9,6 +9,10 @@ WhatsApp / SMS / voice coastal safety advisories for Karnataka stations. The Fla
 - Tide timing uses Open-Meteo marine `sea_level_height_msl` highs/lows (modeled, not official SOI tables)
 - Voice calls default to Malpe Fishing Harbor
 
+### Tide / weather caveat
+
+Pure astronomical tide tables cannot account for real-time weather anomalies. Extreme low pressure, strong onshore winds, cyclones, or heavy monsoon runoff can push the actual water level well above or below the table prediction on a given day. Our advisories use a marine model (`sea_level_height_msl`) rather than SOI tables, but they are still estimates — always cross-check local shoreline markers and red flags.
+
 ## Droplet layout
 
 | Path | Purpose |

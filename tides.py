@@ -111,6 +111,10 @@ def compute_tide_timing(levels, start_idx=0, now_ist=None, window_hours=24):
     Estimate high/low water from Open-Meteo marine sea_level_height_msl.
 
     `levels` is an hourly series; `start_idx` is the current hour.
+
+    Note: astronomical tide tables ignore weather setup (low pressure,
+    onshore wind, cyclone surge, monsoon runoff). This marine series is
+    modeled, not official SOI — still treat clocks as approximate.
     """
     uncertain = {
         "tide_summary": "Tide timing uncertain — use local shoreline markers.",
