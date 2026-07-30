@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from app import STATIONS_FILE, load_json, process_coastal_safety
+from safety import process_coastal_safety
+from storage import STATIONS_FILE, load_json
 
 
 def run_broadbase_telemetry_refresh():
