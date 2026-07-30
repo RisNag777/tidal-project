@@ -207,6 +207,61 @@ ACTION_TEMPLATES = {
     },
 }
 
+# One-line summary per audience (default WhatsApp reply). Full bullets on demand.
+ACTION_ONE_LINERS = {
+    "A": {
+        "low": {
+            "recreational": "Swim only in marked zones; keep kids close.",
+            "operators": "Keep jet ski and banana rides clear of the swim zone.",
+            "fishermen": "Use the marked harbor channel; return inside if wind builds.",
+        },
+        "elevated": {
+            "recreational": "Stay behind red flags; keep kids on upper walkways.",
+            "operators": "Limit boat rides near the harbor entrance; keep clear of family beach zones.",
+            "fishermen": "Stay near the harbor opening; avoid where the river meets the sea in building swell.",
+        },
+        "high": {
+            "recreational": "Total water ban — no swimming; stay behind red flags on land.",
+            "operators": "Stop all boat rides and jet ski trips; keep equipment inland.",
+            "fishermen": "Keep boats tied inside the harbor walls; avoid the river–sea junction.",
+        },
+    },
+    "B": {
+        "low": {
+            "recreational": "Stay back from cliff edges and selfie drop-offs.",
+            "operators": "Keep tours on marked paths; stop if red flags rise.",
+            "fishermen": "Cast away from cliff faces; exit if a rip pulls you.",
+        },
+        "elevated": {
+            "recreational": "Stay well back from cliffs; keep kids far from the water.",
+            "operators": "Limit overlook groups; avoid boat rides near rock points.",
+            "fishermen": "Avoid casting from rock points; keep boats off the ridges.",
+        },
+        "high": {
+            "recreational": "Total water ban — stay far from cliffs and rocks.",
+            "operators": "Stop cliff and rock tours; hold guests behind barriers.",
+            "fishermen": "Stay off rock ledges; keep boats well clear of ridges.",
+        },
+    },
+    "C": {
+        "low": {
+            "recreational": "Keep kids on bank paths; stay back from channel edges.",
+            "operators": "Run boat rides inland of where the river meets the sea.",
+            "fishermen": "Work inland channels; check the sandbar before crossing.",
+        },
+        "elevated": {
+            "recreational": "Stay back from banks; no wading near channels or sand spits.",
+            "operators": "Keep boat rides well inland of where the river meets the sea.",
+            "fishermen": "Avoid where the river meets the sea in strong current.",
+        },
+        "high": {
+            "recreational": "Total water ban — no wading near channels or sand spits.",
+            "operators": "Stop boat rides near where the river meets the sea.",
+            "fishermen": "Stay far from where the river meets the sea at peak tide.",
+        },
+    },
+}
+
 # Fallback when coast_profile is missing
 SITE_TYPE_TO_COAST_PROFILE = {
     "harbor": "A",
@@ -227,8 +282,25 @@ AUDIENCE_HEADERS = (
     ("fishermen", "🎣 Small boats & fishermen:"),
 )
 
+# Keywords for "Malpe families" / "Karwar fishermen" detail requests.
+AUDIENCE_ALIASES = {
+    "recreational": (
+        "families", "family", "kids", "kid", "swimmers", "swimmer",
+        "swim", "beach", "recreational",
+    ),
+    "operators": (
+        "operators", "operator", "rides", "ride", "jetski", "jet-ski",
+        "jet ski", "banana", "watersports", "water sports", "tourism",
+    ),
+    "fishermen": (
+        "fishermen", "fisherman", "fishing", "boats", "boat",
+        "harbor", "harbour", "net", "nets",
+    ),
+}
+
 LEGACY_ACTION_MARKERS = (
     "For small non-motorized fishing boats:",
+    "For more detail, reply:",
 )
 
 # Site labels soften/harden with live risk (monsoon banner stays separate)
@@ -403,17 +475,21 @@ def danger_label_for(station, risk_level):
     labels = SITE_DANGER_LABELS.get(site_type, SITE_DANGER_LABELS["harbor"])
     return labels.get(normalize_risk_level(risk_level), labels["elevated"])
 
-def fetch_wave_height_m(latitude, longitude, now_ist):
-    """Current significant wave height (m) from Open-Meteo marine; None if unavailable."""
+def fetch_marine_bundle(latitude, longitude, now_ist):
+    """
+    Open-Meteo marine: current wave height + hourly sea_level_height_msl.
+    Returns {"wave_m": float|None, "sea_levels": list|None, "sea_idx": int}.
+    """
+    empty = {"wave_m": None, "sea_levels": None, "sea_idx": 0}
     try:
         response = requests.get(
             "https://marine-api.open-meteo.com/v1/marine",
             params={
                 "latitude": float(latitude),
                 "longitude": float(longitude),
-                "hourly": "wave_height",
+                "hourly": "wave_height,sea_level_height_msl",
                 "timezone": "Asia/Kolkata",
-                "forecast_days": 2,
+                "forecast_days": 3,
             },
             timeout=20,
         )
@@ -421,18 +497,25 @@ def fetch_wave_height_m(latitude, longitude, now_ist):
         payload = response.json()
         times = payload["hourly"]["time"]
         heights = payload["hourly"]["wave_height"]
+        sea_levels = payload["hourly"].get("sea_level_height_msl")
         current_hour_str = now_ist.strftime("%Y-%m-%dT%H:00")
         try:
             idx = times.index(current_hour_str)
         except ValueError:
             idx = 0
-        height = heights[idx]
-        if height is None:
-            return None
-        return float(height)
+        wave_m = None
+        if idx < len(heights) and heights[idx] is not None:
+            wave_m = float(heights[idx])
+        if not sea_levels:
+            return {"wave_m": wave_m, "sea_levels": None, "sea_idx": idx}
+        return {
+            "wave_m": wave_m,
+            "sea_levels": sea_levels,
+            "sea_idx": idx,
+        }
     except Exception as exc:
-        print(f"⚠️ Marine wave fetch failed: {exc}")
-        return None
+        print(f"⚠️ Marine fetch failed: {exc}")
+        return empty
 
 def actions_for(station, audience, risk_level):
     profile = station_coast_profile(station)
@@ -449,18 +532,49 @@ def actions_for(station, audience, risk_level):
                 bullets.insert(0, zoning)
     return bullets
 
-def build_action_sections(station, risk_level):
+def one_liner_for(station, audience, risk_level):
+    profile = station_coast_profile(station)
+    by_profile = ACTION_ONE_LINERS.get(profile, ACTION_ONE_LINERS["A"])
+    by_risk = by_profile.get(normalize_risk_level(risk_level), by_profile["elevated"])
+    return by_risk[audience]
+
+def build_one_liner_sections(station, risk_level):
     lines = []
     for audience, header in AUDIENCE_HEADERS:
+        lines.append(f"{header} {one_liner_for(station, audience, risk_level)}")
+    lines.append("")
+    place = station["location_name"].split()[0]
+    lines.append(
+        "For more detail, reply: "
+        f"{place} families | {place} operators | {place} fishermen"
+    )
+    return "\n".join(lines)
+
+def build_detail_section(station, risk_level, audience):
+    header = dict(AUDIENCE_HEADERS)[audience]
+    lines = [header]
+    for bullet in actions_for(station, audience, risk_level):
+        lines.append(f"- {bullet}")
+    return "\n".join(lines)
+
+def build_action_sections(station, risk_level, audience=None):
+    """Full multi-audience detail (used in prompts / legacy) or one audience."""
+    if audience:
+        return build_detail_section(station, risk_level, audience)
+    lines = []
+    for key, header in AUDIENCE_HEADERS:
         lines.append(header)
-        for bullet in actions_for(station, audience, risk_level):
+        for bullet in actions_for(station, key, risk_level):
             lines.append(f"- {bullet}")
         lines.append("")
     return "\n".join(lines).rstrip()
 
-def apply_action_templates(advisory, station, risk_level):
-    """Replace free-form action bullets with coast-profile + risk templates."""
-    sections = build_action_sections(station, risk_level)
+def apply_action_templates(advisory, station, risk_level, audience=None):
+    """Attach summary one-liners or one category's detailed bullets."""
+    if audience:
+        sections = build_detail_section(station, risk_level, audience)
+    else:
+        sections = build_one_liner_sections(station, risk_level)
     cut_at = earliest_marker_index(
         advisory, audience_header_texts() + list(LEGACY_ACTION_MARKERS)
     )
@@ -472,6 +586,22 @@ def apply_action_templates(advisory, station, risk_level):
     if stay_idx != -1:
         return advisory[:stay_idx].rstrip() + "\n\n" + sections + "\n\n" + closing
     return advisory.rstrip() + "\n\n" + sections + "\n\n" + closing
+
+def parse_audience(user_text):
+    """Return audience key if the message asks for a category detail."""
+    clean = " ".join((user_text or "").lower().split())
+    if not clean:
+        return None
+    # Prefer longer aliases first (e.g. "water sports" before "water").
+    candidates = []
+    for audience, aliases in AUDIENCE_ALIASES.items():
+        for alias in aliases:
+            candidates.append((len(alias), alias, audience))
+    candidates.sort(reverse=True)
+    for _length, alias, audience in candidates:
+        if alias in clean:
+            return audience
+    return None
 
 def truncate_for_whatsapp(text, limit=WHATSAPP_MAX_CHARS):
     """Hard-cap outbound WhatsApp body so Twilio does not silently drop it."""
@@ -601,14 +731,12 @@ def build_safety_prompt(station, telemetry, now_ist):
     advisory_title = RISK_ADVISORY_TITLES[risk_level]
     danger_label = danger_label_for(station, risk_level)
     boat_sentence = RISK_BOAT_SENTENCES[risk_level]
-    action_sections = build_action_sections(station, risk_level)
     conditions_block = (
         f"{telemetry['weather_line']}\n"
         f"Tide: {telemetry['tide_summary']}\n"
         f"{boat_sentence}"
     )
-    emergency = emergency_footer(station)
-    return f"""Write a coastal safety advisory using EXACTLY this structure and line breaks. Do not use markdown.
+    return f"""Write ONLY the coastal status header and conditions using EXACTLY this structure and line breaks. Do not use markdown.
 
 🌊 Safety Status Update: {loc}
 {monsoon_section}
@@ -621,19 +749,11 @@ Current Time: {telemetry['current_time']}
 
 {conditions_block}
 
-{action_sections}
-
-Stay safe.
-
-{emergency}
-
 Rules:
 - Copy the conditions block (weather, Tide, and boat-risk sentence) exactly as shown; do not rephrase numbers or invent stronger weather.
-- Copy the audience action sections exactly as shown; do not invent, remove, or rewrite bullets.
-- Keep TOTAL WATER BAN as the first swimmer bullet when present; do not soften it.
+- Stop after the boat-risk sentence. Do not add audience sections, Stay safe, or emergency lines.
 - Do not invent exact tide heights in feet or meters.
-- Keep the emergency contact line exactly as shown at the bottom.
-- Keep the whole advisory concise for WhatsApp (under 1400 characters if possible).
+- Keep the whole reply concise for WhatsApp.
 {monsoon_rule}- Keep the header lines exactly as shown, including the advisory title, location name, current time, and danger label.
 - Use plain text only."""
 
@@ -696,7 +816,7 @@ def match_station_locally(user_text):
             return station
     return None
 
-def process_coastal_safety(station):
+def process_coastal_safety(station, audience=None):
     cache = load_json(CACHE_FILE)
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     loc = station["location_name"]
@@ -733,25 +853,37 @@ def process_coastal_safety(station):
     current_gust = None
     if wind_gusts and idx < len(wind_gusts) and wind_gusts[idx] is not None:
         current_gust = float(wind_gusts[idx])
-    current_wave = fetch_wave_height_m(
+    marine = fetch_marine_bundle(
         station["latitude"], station["longitude"], now_ist
     )
+    current_wave = marine["wave_m"]
     risk_level = compute_risk_level(current_wind, current_wave, in_monsoon)
-    tide_timing = compute_tide_timing(pressures, idx, now_ist=now_ist)
+    if marine["sea_levels"]:
+        tide_timing = compute_tide_timing(
+            marine["sea_levels"], marine["sea_idx"], now_ist=now_ist
+        )
+    else:
+        print("⚠️ sea_level_height_msl unavailable; tide timing uncertain.")
+        tide_timing = {
+            "tide_summary": "Tide timing uncertain — use local shoreline markers.",
+            "source": "unavailable",
+        }
 
     cached = cache.get(loc) or {}
-    cached_advisory = cached.get("advisory") or cached.get("full_advisory")
+    conditions = cached.get("conditions")
     if (
         cached.get("date") == today_str
         and cached.get("risk_level") == risk_level
-        and cached_advisory
+        and conditions
     ):
         print(
-            f"💰 Cost Avoided! Returning cached advisory "
-            f"(risk={risk_level})."
+            f"💰 Cost Avoided! Reusing cached conditions "
+            f"(risk={risk_level}, audience={audience or 'summary'})."
         )
-        advisory = apply_monsoon_overlay(cached_advisory, now_ist)
-        return apply_action_templates(advisory, station, risk_level)
+        conditions = apply_monsoon_overlay(conditions, now_ist)
+        return apply_action_templates(
+            conditions, station, risk_level, audience=audience
+        )
 
     telemetry = {
         "current_time": format_ist_time(now_ist),
@@ -778,7 +910,7 @@ def process_coastal_safety(station):
         "model": "sarvam-105b",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.2,
-        "max_tokens": 512,
+        "max_tokens": 320,
         "reasoning_effort": None,
     }
     headers = {
@@ -791,17 +923,18 @@ def process_coastal_safety(station):
         json=payload,
     )
     ai_response.raise_for_status()
-    base_advisory = ai_response.json()["choices"][0]["message"]["content"]
-    base_advisory = apply_monsoon_overlay(base_advisory, now_ist)
-    advisory = apply_action_templates(base_advisory, station, risk_level)
+    conditions = ai_response.json()["choices"][0]["message"]["content"]
+    conditions = apply_monsoon_overlay(conditions, now_ist)
 
     cache[loc] = {
         "date": today_str,
         "risk_level": risk_level,
-        "advisory": advisory,
+        "conditions": conditions,
     }
     save_json(CACHE_FILE, cache)
-    return advisory
+    return apply_action_templates(
+        conditions, station, risk_level, audience=audience
+    )
 # ==================== Webhooks ====================
 
 @app.route("/webhook/whatsapp", methods=["POST"])
@@ -827,12 +960,14 @@ def incoming_message_handler():
         if not station:
             twiml_resp.message(
                 "⚓ *Karnataka Coastal Safety Agent*\n\n"
-                "Please state your location to check safety windows (e.g., Malpe, Karwar)."
+                "Please state your location (e.g., Malpe, Karwar).\n"
+                "For category detail: Malpe families | Malpe operators | Malpe fishermen"
             )
             return Response(str(twiml_resp), mimetype="text/xml")
 
+        audience = parse_audience(user_query)
         update_station_registry(user_query, station)
-        advisory = process_coastal_safety(station)
+        advisory = process_coastal_safety(station, audience=audience)
         advisory = truncate_for_whatsapp(advisory)
         twiml_resp.message(advisory)
 

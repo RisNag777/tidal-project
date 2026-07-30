@@ -1,12 +1,12 @@
 # Karnataka Coastal Safety Agent
 
-WhatsApp / SMS / voice coastal safety advisories for Karnataka stations. The Flask app runs on a DigitalOcean droplet under **systemd**, pulls weather from Open-Meteo, estimates tide timing from surface-pressure trends, and builds advisories with Sarvam AI.
+WhatsApp / SMS / voice coastal safety advisories for Karnataka stations. The Flask app runs on a DigitalOcean droplet under **systemd**, pulls weather and marine data from Open-Meteo, estimates tide timing from `sea_level_height_msl`, and builds advisories with Sarvam AI.
 
 ## What it does
 
 - Users text a station name (e.g. `Malpe`, `Karwar`) over WhatsApp/SMS
 - Replies with a full advisory covering families, operators, and fishermen
-- Tide timing is estimated from Open-Meteo pressure trends (approximate, not official tide tables)
+- Tide timing uses Open-Meteo marine `sea_level_height_msl` highs/lows (modeled, not official SOI tables)
 - Voice calls default to Malpe Fishing Harbor
 
 ## Droplet layout
