@@ -557,18 +557,6 @@ def build_detail_section(station, risk_level, audience):
         lines.append(f"- {bullet}")
     return "\n".join(lines)
 
-def build_action_sections(station, risk_level, audience=None):
-    """Full multi-audience detail (used in prompts / legacy) or one audience."""
-    if audience:
-        return build_detail_section(station, risk_level, audience)
-    lines = []
-    for key, header in AUDIENCE_HEADERS:
-        lines.append(header)
-        for bullet in actions_for(station, key, risk_level):
-            lines.append(f"- {bullet}")
-        lines.append("")
-    return "\n".join(lines).rstrip()
-
 def apply_action_templates(advisory, station, risk_level, audience=None):
     """Attach summary one-liners or one category's detailed bullets."""
     if audience:
@@ -612,16 +600,6 @@ def truncate_for_whatsapp(text, limit=WHATSAPP_MAX_CHARS):
     trimmed = text[:keep].rsplit("\n", 1)[0].rstrip()
     print(f"⚠️ Truncated advisory from {len(text)} to ≤{limit} chars for WhatsApp")
     return trimmed + suffix
-
-def describe_trend(values, threshold):
-    if len(values) < 2:
-        return "steady"
-    delta = values[-1] - values[0]
-    if delta > threshold:
-        return "increasing"
-    if delta < -threshold:
-        return "decreasing"
-    return "steady"
 
 def impact_trend_label(values, soft_threshold, strong_threshold, rising_word, falling_word):
     """Layperson trend label: Rising / Rising fast / Falling / Falling fast / Steady."""
@@ -858,16 +836,13 @@ def process_coastal_safety(station, audience=None):
     )
     current_wave = marine["wave_m"]
     risk_level = compute_risk_level(current_wind, current_wave, in_monsoon)
-    if marine["sea_levels"]:
-        tide_timing = compute_tide_timing(
-            marine["sea_levels"], marine["sea_idx"], now_ist=now_ist
-        )
-    else:
+    if not marine["sea_levels"]:
         print("⚠️ sea_level_height_msl unavailable; tide timing uncertain.")
-        tide_timing = {
-            "tide_summary": "Tide timing uncertain — use local shoreline markers.",
-            "source": "unavailable",
-        }
+    tide_timing = compute_tide_timing(
+        marine["sea_levels"] or [],
+        marine["sea_idx"],
+        now_ist=now_ist,
+    )
 
     cached = cache.get(loc) or {}
     conditions = cached.get("conditions")
@@ -887,11 +862,6 @@ def process_coastal_safety(station, audience=None):
 
     telemetry = {
         "current_time": format_ist_time(now_ist),
-        "current_pressure": target_pressures[0],
-        "current_wind": current_wind,
-        "current_wave": current_wave,
-        "pressure_trend": describe_trend(target_pressures, 0.5),
-        "wind_trend": describe_trend(target_winds, 2.0),
         "weather_line": build_weather_line(
             float(target_pressures[0]),
             target_pressures,
