@@ -1,7 +1,13 @@
 from datetime import datetime
+from pathlib import Path
+import sys
 
-from safety import process_coastal_safety
-from storage import STATIONS_FILE, load_json
+_ROOT = Path(__file__).resolve().parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from karnataka.safety import process_coastal_safety
+from karnataka.storage import STATIONS_FILE, load_json
 
 
 def run_broadbase_telemetry_refresh():

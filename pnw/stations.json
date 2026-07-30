@@ -1,0 +1,79 @@
+[
+  {
+    "location_name": "Seattle Elliott Bay",
+    "state": "WA",
+    "latitude": 47.6026,
+    "longitude": -122.3393,
+    "site_type": "harbor",
+    "coast_profile": "A",
+    "noaa_station_id": "9447130",
+    "landmarks": ["waterfront pier", "ferry terminal", "seawall walk"],
+    "emergency_line": "📞 Emergency: Dial 911 | USCG Sector Puget Sound"
+  },
+  {
+    "location_name": "Port Townsend",
+    "state": "WA",
+    "latitude": 48.1125,
+    "longitude": -122.7600,
+    "site_type": "harbor",
+    "coast_profile": "A",
+    "noaa_station_id": "9444900",
+    "landmarks": ["marina docks", "Point Hudson jetty", "beach walk"],
+    "emergency_line": "📞 Emergency: Dial 911 | USCG Sector Puget Sound"
+  },
+  {
+    "location_name": "La Push Beach",
+    "state": "WA",
+    "latitude": 47.9040,
+    "longitude": -124.6370,
+    "site_type": "rocky",
+    "coast_profile": "B",
+    "noaa_station_id": "9443090",
+    "landmarks": ["First Beach", "sea stacks", "jetty rocks"],
+    "emergency_line": "📞 Emergency: Dial 911 | Quileute / USCG"
+  },
+  {
+    "location_name": "Westport Harbor",
+    "state": "WA",
+    "latitude": 46.8900,
+    "longitude": -124.1100,
+    "site_type": "harbor",
+    "coast_profile": "A",
+    "noaa_station_id": "9441102",
+    "landmarks": ["marina docks", "jetty entrance", "public pier"],
+    "emergency_line": "📞 Emergency: Dial 911 | USCG Station Grays Harbor"
+  },
+  {
+    "location_name": "Astoria Columbia Bar",
+    "state": "OR",
+    "latitude": 46.2070,
+    "longitude": -123.7680,
+    "site_type": "estuary",
+    "coast_profile": "C",
+    "noaa_station_id": "9439040",
+    "landmarks": ["riverfront pier", "Columbia River mouth", "bar channel"],
+    "emergency_line": "📞 Emergency: Dial 911 | USCG Station Cape Disappointment"
+  },
+  {
+    "location_name": "Cannon Beach",
+    "state": "OR",
+    "latitude": 45.8910,
+    "longitude": -123.9610,
+    "site_type": "beach",
+    "coast_profile": "B",
+    "noaa_station_id": "9437540",
+    "landmarks": ["Haystack Rock", "tide pools", "public beach access"],
+    "emergency_line": "📞 Emergency: Dial 911 | Cannon Beach Fire / USCG"
+  },
+  {
+    "location_name": "Newport Bayfront",
+    "state": "OR",
+    "latitude": 44.6300,
+    "longitude": -124.0500,
+    "site_type": "harbor",
+    "coast_profile": "A",
+    "noaa_station_id": "9435380",
+    "landmarks": ["bayfront docks", "jetty", "public pier"],
+    "emergency_line": "📞 Emergency: Dial 911 | USCG Station Yaquina Bay"
+  }
+]

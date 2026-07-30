@@ -17,11 +17,17 @@ env/
 .env
 .env.*
 
-# Runtime data (written by app.py / broadbase.py)
+# Runtime data (written by region apps / broadbase.py)
 cache.json
 Cache.json
 station_registry.json
 temp_voice.ogg
+karnataka/cache.json
+karnataka/station_registry.json
+karnataka/temp_voice.ogg
+pnw/cache.json
+pnw/station_registry.json
+pnw/temp_voice.ogg
 
 # OS / editor noise
 .DS_Store

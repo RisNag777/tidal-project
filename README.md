@@ -1,130 +1,44 @@
-# Karnataka Coastal Safety Agent
+# Coastal Safety Agents
 
-WhatsApp / SMS / voice coastal safety advisories for Karnataka stations. The Flask app runs on a DigitalOcean droplet under **systemd**, pulls weather and marine data from Open-Meteo, estimates tide timing from `sea_level_height_msl`, and builds advisories with Sarvam AI.
+Two regional WhatsApp / SMS / voice coastal safety apps share common helpers:
 
-## What it does
+| Path | Region | Tide source | LLM |
+|------|--------|-------------|-----|
+| [`karnataka/`](karnataka/) | Karnataka, India | Open-Meteo `sea_level_height_msl` | Sarvam |
+| [`pnw/`](pnw/) | Pacific Northwest, US | NOAA CO-OPS hilo | OpenAI |
+| [`coastal_common/`](coastal_common/) | Shared | Open-Meteo wind/waves, risk scoring, clocks, WhatsApp helpers | — |
 
-- Users text a station name (e.g. `Malpe`, `Karwar`) over WhatsApp/SMS
-- Replies with a full advisory covering families, operators, and fishermen
-- Tide timing uses Open-Meteo marine `sea_level_height_msl` highs/lows (modeled, not official SOI tables)
-- Voice calls default to Malpe Fishing Harbor
-
-### Tide / weather caveat
-
-Pure astronomical tide tables cannot account for real-time weather anomalies. Extreme low pressure, strong onshore winds, cyclones, or heavy monsoon runoff can push the actual water level well above or below the table prediction on a given day. Our advisories use a marine model (`sea_level_height_msl`) rather than SOI tables, but they are still estimates — always cross-check local shoreline markers and red flags.
-
-## Droplet layout
-
-| Path | Purpose |
-|------|---------|
-| `/root/tidal-project` | App checkout |
-| `/root/tidal-project/tidal_env` | Python virtualenv |
-| `/root/tidal-project/.env` | Twilio + Sarvam secrets |
-| `/etc/systemd/system/tidal.service` | Systemd unit |
-
-SSH (from your laptop, with your host alias):
+## Run
 
 ```bash
-ssh digitalocean-app
-```
-
-## First-time setup on the droplet
-
-```bash
-cd /root
-git clone <your-repo-url> tidal-project
-cd tidal-project
-
 python3 -m venv tidal_env
-source tidal_env/bin/activate
+source tidal_env/bin/activate   # Windows: tidal_env\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Create `/root/tidal-project/.env`:
+`.env` at repo root:
 
 ```env
 TWILIO_ACCOUNT_SID=...
 TWILIO_AUTH_TOKEN=...
-SARVAM_API_KEY=...
+SARVAM_API_KEY=...          # Karnataka
+OPENAI_API_KEY=...          # PNW
+OPENAI_CHAT_MODEL=gpt-4o-mini
 ```
 
-Install and enable the systemd service:
-
 ```bash
-sudo cp deploy/tidal.service /etc/systemd/system/tidal.service
-sudo systemctl daemon-reload
-sudo systemctl enable tidal
-sudo systemctl start tidal
-```
-
-## Start / stop / restart the service
-
-```bash
-sudo systemctl start tidal
-sudo systemctl stop tidal
-sudo systemctl restart tidal
-sudo systemctl status tidal
-```
-
-After a code deploy:
-
-```bash
-cd /root/tidal-project
-git pull
-source tidal_env/bin/activate
-pip install -r requirements.txt
-# Clear stale advisories so format changes take effect
-rm -f cache.json
-sudo systemctl restart tidal
-```
-
-## Logs
-
-```bash
-# Live app logs
-journalctl -u tidal -f
-
-# Last 100 lines
-journalctl -u tidal -n 100 --no-pager
-```
-
-## Webhooks
-
-Point Twilio webhooks at your droplet (public IP or domain), port **5000** unless you put nginx in front:
-
-| Channel | Method | Path |
-|---------|--------|------|
-| WhatsApp | POST | `/webhook/whatsapp` |
-| SMS | POST | `/webhook/sms` |
-| Voice | POST | `/webhook/voice` |
-
-Example: `http://YOUR_DROPLET_IP:5000/webhook/whatsapp`
-
-Ensure the droplet firewall / DigitalOcean cloud firewall allows inbound TCP **5000** (or 80/443 if you terminate TLS elsewhere).
-
-## Runtime files (not in git)
-
-These are created on the server and ignored by git:
-
-- `cache.json` — daily advisory cache
-- `station_registry.json` — query audit trail
-
-## Local development (optional)
-
-```bash
-python -m venv tidal_env
-# Windows
-.\tidal_env\Scripts\activate
-# Linux/macOS
-source tidal_env/bin/activate
-
-pip install -r requirements.txt
-# Create .env with the same keys as production
+# Karnataka (port 5000) — systemd still uses root app.py
 python app.py
+# or: python karnataka/app.py
+
+# PNW (port 5001)
+python pnw/app.py
 ```
 
-App listens on `0.0.0.0:5000` by default.
+Precompute Karnataka caches: `python broadbase.py`
 
-## Stations
+## Deploy (Karnataka droplet)
 
-Configured in `stations.json` (Karwar, Kumta, Honnavar, Gangolli, Malpe, Mangaluru Bengre). Each station has a `site_type` used for audience-specific action templates.
+Working directory remains `/root/tidal-project`. `ExecStart` still runs `/root/tidal-project/app.py` (thin launcher into `karnataka/`).
+
+See [`karnataka/README.md`](karnataka/README.md) and [`pnw/README.md`](pnw/README.md) for region-specific notes.
